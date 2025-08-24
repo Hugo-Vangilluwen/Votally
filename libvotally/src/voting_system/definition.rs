@@ -39,6 +39,28 @@ impl Ballots {
     }
 }
 
+/// Contain all the information needed to an election
+pub struct VotingSystemInfo {
+    /// The name of the voting system
+    name: String,
+    /// All ballots of the voting system
+    choices: Vec<String>,
+}
+
+impl VotingSystemInfo {
+    pub(crate) fn new<'a, I>(name: &str, choices: I) -> Self
+    where
+        I: Iterator<Item = &'a String>,
+    {
+        let choices: Vec<String> = choices.map(|s| s.clone()).collect();
+
+        Self {
+            name: name.to_owned(),
+            choices,
+        }
+    }
+}
+
 /// Type for algorithm finding the result of the election from all ballots
 pub type ResultAlgorithm = Box<dyn Fn(&Ballots) -> Option<String>>;
 
@@ -64,7 +86,7 @@ impl VotingSystem {
         choices: impl Iterator<Item = String>,
         result_algorithm: ResultAlgorithm,
     ) -> Self {
-        VotingSystem {
+        Self {
             name: String::from(name),
             // ballot_form,
             ballot_box: Ballots::new(ballot_form, choices),
@@ -91,6 +113,11 @@ impl VotingSystem {
     /// Get the total number of ballots
     pub fn get_count(&self) -> usize {
         self.count
+    }
+
+    // Get all the information about this election
+    pub fn get_info(&self) -> VotingSystemInfo {
+        VotingSystemInfo::new(self.get_name(), self.get_choices())
     }
 
     /// Just vote

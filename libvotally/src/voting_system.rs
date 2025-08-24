@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 
 mod definition;
-pub use self::definition::{BallotForm, VotingSystem};
+pub use self::definition::{BallotForm, VotingSystem, VotingSystemInfo};
 
 mod plurality;
 pub use self::plurality::plurality;

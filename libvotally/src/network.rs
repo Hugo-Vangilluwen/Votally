@@ -1,3 +1,5 @@
-pub mod server;
+mod server;
+pub use self::server::VotallyServer;
 
-pub mod client;
+mod client;
+pub use self::client::VotallyClient;
