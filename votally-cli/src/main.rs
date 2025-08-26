@@ -38,16 +38,18 @@ fn main() {
             process::exit(1);
         }
 
-        let vote = find_voting_system(&cli.voting_system).unwrap_or_else(
-            |err| {
-                eprintln!("{}", err);
-                process::exit(1);
-            },
-        )(cli.choices.into_iter());
+        // let vote = find_voting_system(&cli.voting_system).unwrap_or_else(
+        //     |err| {
+        //         eprintln!("{}", err);
+        //         process::exit(1);
+        //     },
+        // )(cli.choices.into_iter());
 
-        let server = VotallyServer::new("localhost", vote);
+        let mut server = VotallyServer::new("localhost", cli.voting_system, cli.choices.into_iter());
 
         server.answer_many(1);
+
+        println!("Winner: {}", server.result());
 
         // read_vote(&mut vote);
 
