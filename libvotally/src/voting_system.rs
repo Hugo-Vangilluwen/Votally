@@ -5,7 +5,7 @@ mod definition;
 pub use self::definition::{BallotForm, VotingSystem, VotingSystemInfo};
 
 mod plurality;
-pub use self::plurality::plurality;
+pub use self::plurality::Plurality;
 
 /// Error for unknown voting system
 #[derive(Debug)]
@@ -21,15 +21,23 @@ impl Error for UnknownVotingSystem {}
 
 /// Try to find the voting system which is associated to name.
 /// Return a function to create the voting system if found
-/// and return a UnknownVotingSystem error else.
-pub fn find_voting_system<T>(
+/// and return a UnknownVotingSystem error else.*
+pub fn find_voting_system(name: &str) -> Result<(), UnknownVotingSystem> {
+    match name {
+        self::plurality::NAME => Ok(()),
+        _ => Err(UnknownVotingSystem(format!("{}", name))),
+    }
+}
+
+pub fn create_voting_system<T>(
     name: &str,
-) -> Result<fn(T) -> definition::VotingSystem, UnknownVotingSystem>
+    choices: T
+) -> impl VotingSystem
 where
     T: Iterator<Item = String>,
 {
     match name {
-        self::plurality::NAME => Ok(plurality),
-        _ => Err(UnknownVotingSystem(format!("{}", name))),
+        self::plurality::NAME => Plurality::new(choices),
+        _ => panic!("Error creating voting system"),
     }
 }

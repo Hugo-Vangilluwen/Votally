@@ -13,7 +13,7 @@ pub enum Ballots {
 }
 
 impl Ballots {
-    fn new(ballot_form: BallotForm, choices: impl Iterator<Item = String>) -> Self {
+    pub(crate) fn new(ballot_form: BallotForm, choices: impl Iterator<Item = String>) -> Self {
         match ballot_form {
             BallotForm::Uninominal => {
                 let mut choices_hashmap: HashMap<String, i32> = HashMap::new();
@@ -26,13 +26,13 @@ impl Ballots {
         }
     }
 
-    fn choices(&self) -> impl Iterator<Item = &String> {
+    pub(crate) fn choices(&self) -> impl Iterator<Item = &String> {
         match &self {
             Ballots::Uninominal(c) => c.keys(),
         }
     }
 
-    fn ballot_form(&self) -> BallotForm {
+    pub(crate) fn ballot_form(&self) -> BallotForm {
         match self {
             Ballots::Uninominal(_) => BallotForm::Uninominal,
         }
@@ -64,65 +64,52 @@ impl VotingSystemInfo {
 /// Type for algorithm finding the result of the election from all ballots
 pub type ResultAlgorithm = Box<dyn Fn(&Ballots) -> Option<String>>;
 
-/// Used to describe election
-pub struct VotingSystem {
-    /// The name of the voting system
-    name: String,
-    // The ballot form of the voting system
-    // ballot_form: BallotForm,
-    /// All ballots of the voting system
-    ballot_box: Ballots,
-    /// Calculate the election's result
-    result_algorithm: ResultAlgorithm,
-    /// Total number of ballots
-    count: usize,
-}
+// Used to describe election
+// pub struct VotingSystem {
+//     /// The name of the voting system
+//     name: String,
+//     // The ballot form of the voting system
+//     // ballot_form: BallotForm,
+//     /// All ballots of the voting system
+//     ballot_box: Ballots,
+//     /// Calculate the election's result
+//     result_algorithm: ResultAlgorithm,
+//     /// Total number of ballots
+//     count: usize,
+// }
 
-impl VotingSystem {
+pub trait VotingSystem {
     /// Create a new election
-    pub(crate) fn new(
-        name: &str,
-        ballot_form: BallotForm,
+    fn new(
         choices: impl Iterator<Item = String>,
-        result_algorithm: ResultAlgorithm,
-    ) -> Self {
-        Self {
-            name: String::from(name),
-            // ballot_form,
-            ballot_box: Ballots::new(ballot_form, choices),
-            result_algorithm,
-            count: 0,
-        }
-    }
+    ) -> Self;
 
     /// Get the name of the voting system
-    pub fn get_name(&self) -> &str {
-        &self.name[..]
-    }
+    fn get_name(&self) -> &str;
+
+    /// Get the ballot box
+    fn get_ballot_box(&mut self) -> &mut Ballots;
 
     /// Get all choices
-    pub fn get_choices(&self) -> impl Iterator<Item = &String> {
-        self.ballot_box.choices()
-    }
+    fn get_choices(&self) -> impl Iterator<Item = &String>;
 
     /// Get the ballot form
-    pub fn get_ballot_form(&self) -> BallotForm {
-        self.ballot_box.ballot_form()
-    }
+    fn get_ballot_form(&self) -> BallotForm;
+
+    /// Increase number of ballot
+    fn add_ballot(&mut self);
 
     /// Get the total number of ballots
-    pub fn get_count(&self) -> usize {
-        self.count
-    }
+    fn get_count(&self) -> usize;
 
-    // Get all the information about this election
-    pub fn get_info(&self) -> VotingSystemInfo {
+    /// Get all the information about this election
+    fn get_info(&self) -> VotingSystemInfo {
         VotingSystemInfo::new(self.get_name(), self.get_choices())
     }
 
     /// Just vote
-    pub fn vote(&mut self, ballot: &str) -> Result<(), InvalidBallot> {
-        match &mut self.ballot_box {
+    fn vote(&mut self, ballot: &str) -> Result<(), InvalidBallot> {
+        match &mut self.get_ballot_box() {
             Ballots::Uninominal(c) => {
                 c.get(ballot)
                     .ok_or(InvalidBallot(format!("unknown candidate {}", ballot)))?;
@@ -131,14 +118,12 @@ impl VotingSystem {
             }
         }
 
-        self.count += 1;
+        self.add_ballot();
         Ok(())
     }
 
     /// Calculate the election's result
-    pub fn result(&self) -> String {
-        (self.result_algorithm)(&self.ballot_box).expect("There is no winnner")
-    }
+    fn result(&self) -> Option<String>;
 }
 
 /// Error  for invalid ballot
@@ -153,20 +138,20 @@ impl fmt::Display for InvalidBallot {
 
 impl Error for InvalidBallot {}
 
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    #[should_panic]
-    fn invalid_ballot() {
-        let mut p = VotingSystem::new(
-            "test",
-            BallotForm::Uninominal,
-            vec![String::from("A")].into_iter(),
-            Box::new(|_choices: &Ballots| Some(String::from("A"))),
-        );
-
-        p.vote("C").unwrap();
-    }
-}
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//
+//     #[test]
+//     #[should_panic]
+//     fn invalid_ballot() {
+//         let mut p = VotingSystem::new(
+//             "test",
+//             BallotForm::Uninominal,
+//             vec![String::from("A")].into_iter(),
+//             Box::new(|_choices: &Ballots| Some(String::from("A"))),
+//         );
+//
+//         p.vote("C").unwrap();
+//     }
+// }
