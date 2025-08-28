@@ -1,5 +1,6 @@
+use std::io::BufRead;
 // use std::env;
-use std::process;
+use std::{io::stdin, process};
 
 use clap::Parser;
 
@@ -45,7 +46,8 @@ fn main() {
         //     },
         // )(cli.choices.into_iter());
 
-        let mut server = VotallyServer::new("localhost", cli.voting_system, cli.choices.into_iter());
+        let mut server =
+            VotallyServer::new("localhost", cli.voting_system, cli.choices.into_iter());
 
         server.answer_many(1);
 
@@ -59,6 +61,28 @@ fn main() {
 
         let mut client = VotallyClient::new("localhost");
 
-        println!("{}", client.get_info());
+        let info = client.get_info();
+
+        println!("Choices are: ");
+
+        let mut info_iter = info.iter();
+        let last_info = info_iter.next_back().unwrap();
+        for i in info_iter {
+            print!("{}, ", i);
+        }
+        println!("{}", last_info);
+
+        let mut choice = String::new();
+        {
+            let mut stdin = stdin().lock();
+
+            while !info.contains(&choice) {
+                println!("Enter your choice:");
+                stdin.read_line(&mut choice).unwrap();
+                choice = choice.to_string().trim().to_owned();
+            }
+        }
+
+        client.send_vote(&choice);
     }
 }

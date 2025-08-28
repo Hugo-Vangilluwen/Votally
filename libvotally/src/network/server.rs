@@ -1,14 +1,14 @@
 use std::{
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
-    sync::{mpsc, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc},
     thread::{self, JoinHandle},
 };
 
-use crate::voting_system::{find_voting_system, VotingSystem};
+use crate::voting_system::find_voting_system;
 
 pub struct VotallyServer {
-    address: String,
+    // address: String,
     // vote: Arc<Mutex<VotingSystem>>,
     // vote: VotingSystem,
     listener: Option<TcpListener>,
@@ -22,8 +22,7 @@ impl VotallyServer {
     const MAX_CONNECTION: usize = 4;
 
     /// Create a new VotalServer
-    pub fn new<T>(address: &str, name_vote: String, choices: T)
-    -> Self
+    pub fn new<T>(address: &str, name_vote: String, choices: T) -> Self
     where
         T: Iterator<Item = String>,
     {
@@ -52,7 +51,9 @@ impl VotallyServer {
         let choices: Vec<String> = choices_worker;
 
         let thread_vote = thread::spawn(move || {
-            let mut vote = (find_voting_system(&name_vote[..]).unwrap())(choices.iter().map(|s| s.to_string()));
+            let mut vote = (find_voting_system(&name_vote[..]).unwrap())(
+                choices.iter().map(|s| s.to_string()),
+            );
 
             loop {
                 let message_vote = receiver_vote.recv().unwrap();
@@ -62,7 +63,8 @@ impl VotallyServer {
                 message_vote.next_back();
                 let message_vote = message_vote.as_str();
 
-                vote.vote(message_vote);
+                vote.vote(message_vote)
+                    .unwrap_or_else(|err| eprintln!("{}", err));
 
                 break;
             }
@@ -71,7 +73,7 @@ impl VotallyServer {
         });
 
         Self {
-            address: String::from(address),
+            // address: String::from(address),
             // vote,
             listener: Some(listener),
             workers,
