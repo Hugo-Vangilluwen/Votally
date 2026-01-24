@@ -1,62 +1,78 @@
-use std::{
-    io::{BufRead, BufReader, Write},
-    net::{TcpListener, TcpStream},
-    sync::{Arc, Mutex, mpsc},
-    thread::{self, JoinHandle},
-};
+use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::{mpsc, watch};
 
-use crate::voting_system::find_voting_system;
+use crate::voting_system::{VotingSystem, find_voting_system};
+
+async fn answer_votally_client(
+    mut socket: TcpStream,
+    mut end_accept_voter_rx: watch::Receiver<()>,
+    ballots_tx: mpsc::Sender<String>,
+    choices: String,
+) -> io::Result<()> {
+    socket.write_all(choices.as_bytes()).await?;
+
+    end_accept_voter_rx.changed().await.unwrap();
+
+    let mut reader = BufReader::new(socket);
+    let mut ballot = String::new();
+    reader.read_line(&mut ballot).await?;
+
+    ballots_tx.send(ballot).await.unwrap();
+
+    Ok(())
+}
 
 pub struct VotallyServer {
-    // address: String,
-    // vote: Arc<Mutex<VotingSystem>>,
-    // vote: VotingSystem,
-    listener: Option<TcpListener>,
-    workers: Vec<Worker>,
-    sender: Option<mpsc::Sender<Mutex<TcpStream>>>,
-    thread_vote: Option<JoinHandle<String>>,
+    end_accept_voter_tx: watch::Sender<()>,
 }
 
 impl VotallyServer {
     pub const PORT: &str = "50001";
-    const MAX_CONNECTION: usize = 4;
 
-    /// Create a new VotalServer
-    pub fn new<T>(address: &str, name_vote: String, choices: T) -> Self
+    pub async fn new<T>(address: &str, name_vote: String, choices: Vec<String>) -> Self
     where
-        T: Iterator<Item = String>,
+        T: Iterator<Item = String> + Copy + 'static,
     {
-        let listener = TcpListener::bind(address.to_owned() + ":" + Self::PORT).unwrap();
+        let address = address.to_owned();
+        let (end_accept_voter_tx, mut end_accept_voter_rx) = watch::channel(());
+        let (ballots_tx, mut ballots_rx) = mpsc::channel(100);
 
-        let mut workers = Vec::with_capacity(Self::MAX_CONNECTION);
+        let response_choices = choices
+            .iter()
+            .fold(String::new(), |acc, c| acc + c.as_str() + ",");
 
-        let (sender, receiver) = mpsc::channel();
-        let receiver = Arc::new(Mutex::new(receiver));
+        // accept voter
+        tokio::spawn(async move {
+            let listener_tcp = TcpListener::bind(address + ":" + Self::PORT).await.unwrap();
 
-        let (sender_vote, receiver_vote) = mpsc::channel();
+            let end_rx_clone = end_accept_voter_rx.clone();
+            tokio::select! {
+                _ = async {
+                    loop {
+                        let (socket, _) = listener_tcp.accept().await?;
 
-        // let choices = vote.get_choices().map(|s| s.to_string()).collect();
-        let choices_worker: Vec<String> = choices.collect();
+                        tokio::spawn(answer_votally_client(socket, end_rx_clone.clone(), ballots_tx.clone(), response_choices.clone()));
+                    }
 
-        for id in 0..Self::MAX_CONNECTION {
-            workers.push(Worker::new(
-                id,
-                Arc::clone(&receiver),
-                Mutex::new(sender_vote.clone()),
-                choices_worker.clone(),
-            ))
-        }
+                    Ok::<(), io::Error>(())
+                } => {}
+                _ = end_accept_voter_rx.changed() => {}
+            }
+        });
 
-        // let choices: Vec<String> = choices.map(|s| s.to_string()).collect();
-        let choices: Vec<String> = choices_worker;
+        // make the poll
+        // let vote = Arc::new(Mutex::new((find_voting_system(&name_vote[..]).unwrap())(
+        // choices.iter().map(|s| s.to_string()),
+        // )));
 
-        let thread_vote = thread::spawn(move || {
-            let mut vote = (find_voting_system(&name_vote[..]).unwrap())(
-                choices.iter().map(|s| s.to_string()),
-            );
+        tokio::spawn(async move {
+            let choices = choices.iter().map(|s| s.to_string()).collect();
+
+            let mut vote = find_voting_system(&name_vote[..], choices).unwrap();
 
             loop {
-                let message_vote = receiver_vote.recv().unwrap();
+                let message_vote = ballots_rx.recv().await.unwrap();
 
                 // remove the newline at the end
                 let mut message_vote = message_vote.chars();
@@ -68,95 +84,14 @@ impl VotallyServer {
 
                 break;
             }
-
-            vote.result()
         });
 
-        Self {
-            // address: String::from(address),
-            // vote,
-            listener: Some(listener),
-            workers,
-            sender: Some(sender),
-            thread_vote: Some(thread_vote),
+        VotallyServer {
+            end_accept_voter_tx,
         }
     }
 
-    pub fn answer(&self, stream: TcpStream) {
-        let mutex_stream = Mutex::new(stream);
-
-        self.sender.as_ref().unwrap().send(mutex_stream).unwrap();
-    }
-
-    pub fn answer_many(&self, n: usize) {
-        for stream in self.listener.as_ref().unwrap().incoming().take(n) {
-            self.answer(stream.unwrap());
-        }
-    }
-
-    pub fn result(&mut self) -> String {
-        // self.vote.lock().unwrap().result()
-        // String::from("Toto")
-        self.thread_vote.take().unwrap().join().unwrap()
-    }
-}
-
-impl Drop for VotallyServer {
-    fn drop(&mut self) {
-        drop(self.listener.take());
-        drop(self.sender.take());
-
-        for worker in self.workers.drain(..) {
-            // println!("Shutting down worker {}", worker.id);
-
-            worker.thread.join().unwrap();
-        }
-    }
-}
-
-struct Worker {
-    // id: usize,
-    thread: thread::JoinHandle<()>,
-}
-
-impl Worker {
-    fn new(
-        id: usize,
-        receiver: Arc<Mutex<mpsc::Receiver<Mutex<TcpStream>>>>,
-        sender_vote: Mutex<mpsc::Sender<String>>,
-        choices: Vec<String>,
-    ) -> Worker {
-        let thread = thread::spawn(move || {
-            loop {
-                let message = receiver.lock().unwrap().recv();
-
-                match message {
-                    Ok(stream) => {
-                        let response = choices.iter().fold(String::new(), |acc, c| acc + c + ",");
-
-                        stream
-                            .lock()
-                            .unwrap()
-                            .write_all(response.as_bytes())
-                            .unwrap();
-
-                        let mut buffer = String::new();
-                        let reader = stream.lock().unwrap().try_clone().unwrap();
-                        let mut reader = BufReader::new(reader);
-                        reader.read_line(&mut buffer).unwrap();
-
-                        sender_vote.lock().unwrap().send(buffer).unwrap();
-
-                        println!("Connnection ended, id:{id}");
-                    }
-                    Err(_) => {
-                        println!("Worker {id} disconnected; shutting down.");
-                        break;
-                    }
-                }
-            }
-        });
-
-        Worker { thread } // id,
+    pub async fn start_ballot(self) -> Result<(), watch::error::SendError<()>> {
+        self.end_accept_voter_tx.send(())
     }
 }

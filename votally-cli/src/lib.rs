@@ -32,8 +32,8 @@ use libvotally::voting_system::*;
 // }
 
 /// Announce in the console the different choices
-fn annouce_choices(vote: &VotingSystem) {
-    let mut choices = vote.get_choices();
+fn annouce_choices<VS: VotingSystem>(vote: &VS) {
+    let mut choices = vote.get_info().get_choices();
     print!("Different choices are {}", choices.next().unwrap());
     for c in choices {
         print!(", {}", c);
@@ -43,10 +43,10 @@ fn annouce_choices(vote: &VotingSystem) {
 }
 
 /// Read a vote
-pub fn read_vote(vote: &mut VotingSystem) {
-    annouce_choices(&vote);
+pub fn read_vote<VS: VotingSystem>(vote: &mut VS) {
+    annouce_choices(vote);
 
-    match vote.get_ballot_form() {
+    match vote.get_info().get_ballot_form() {
         BallotForm::Uninominal => {
             let mut ballot = String::new();
 
