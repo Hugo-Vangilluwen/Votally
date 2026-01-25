@@ -1,6 +1,5 @@
-// use std::io::Read;
-use std::{
-    io::{BufRead, BufReader, Write},
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
 };
 
@@ -14,33 +13,36 @@ pub struct VotallyClient {
 
 impl VotallyClient {
     /// Create a new VotalClient
-    pub fn new(address: &str) -> Self {
-        let stream = TcpStream::connect(address.to_owned() + ":" + VotallyServer::PORT).unwrap();
+    pub async fn new(address: &str) -> Self {
+        let stream = TcpStream::connect(address.to_owned() + ":" + VotallyServer::PORT)
+            .await
+            .unwrap();
 
         Self { stream }
     }
 
-    fn write_stream(&mut self, message: &str) {
+    /// Write message in TcpStream
+    async fn write_stream(&mut self, message: &str) {
         let message = format!("{message}\n");
 
-        self.stream.write_all(message.as_bytes()).unwrap();
+        self.stream.write_all(message.as_bytes()).await.unwrap();
     }
 
-    fn read_stream(&mut self) -> String {
+    /// Read one line of TcpStream
+    async fn read_stream(&mut self) -> String {
         let mut buffer = String::new();
-        let reader = self.stream.try_clone().unwrap();
-        let mut reader = BufReader::new(reader);
-        reader.read_line(&mut buffer).unwrap();
+        let mut reader = BufReader::new(&mut self.stream);
+        reader.read_line(&mut buffer).await.unwrap();
 
         buffer
     }
 
     /// Get all the information from server
     // Normaly return VotingSystemInfo
-    pub fn get_info(&mut self) -> Vec<String> {
+    pub async fn get_info(&mut self) -> Vec<String> {
         println!("Client started !");
 
-        let info_iter = self.read_stream();
+        let info_iter = self.read_stream().await;
         let mut info_iter = info_iter.split(',');
         info_iter.next_back();
 
@@ -48,7 +50,9 @@ impl VotallyClient {
     }
 
     /// Send the vote to the server
-    pub fn send_vote(&mut self, vote: &str) {
-        self.write_stream(vote);
+    pub async fn send_vote(&mut self, vote: &str) {
+        let _ = self.read_stream().await; // expect a blank line
+
+        self.write_stream(vote).await;
     }
 }

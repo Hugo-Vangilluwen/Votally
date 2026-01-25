@@ -1,5 +1,4 @@
 use std::io::BufRead;
-// use std::env;
 use std::{io::stdin, process};
 
 use clap::Parser;
@@ -34,7 +33,7 @@ async fn main() {
 
         let mut server = VotallyServer::new("localhost", cli.voting_system, cli.choices).await;
 
-        println!("Press enter to continue:");
+        println!("Press enter to start ballot");
         {
             let mut line = String::new();
             std::io::stdin()
@@ -44,7 +43,7 @@ async fn main() {
 
         server.start_ballot().await.unwrap();
 
-        println!("Press enter to continue:");
+        println!("Press enter to end vote");
         {
             let mut line = String::new();
             std::io::stdin()
@@ -52,13 +51,15 @@ async fn main() {
                 .expect("Failed to read line");
         }
 
+        server.end_poll().await;
+
         println!("Winner: {}", server.result().await.unwrap());
     } else {
         println!("I'm a client.");
 
-        let mut client = VotallyClient::new("localhost");
+        let mut client = VotallyClient::new("localhost").await;
 
-        let info = client.get_info();
+        let info = client.get_info().await;
 
         println!("Choices are: ");
 
@@ -80,6 +81,6 @@ async fn main() {
             }
         }
 
-        client.send_vote(&choice);
+        client.send_vote(&choice).await;
     }
 }

@@ -1,10 +1,14 @@
-use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, oneshot, watch};
-use tokio::task::JoinHandle;
+use tokio::{
+    io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
+    net::{TcpListener, TcpStream},
+    sync::{mpsc, oneshot, watch},
+    task::JoinHandle,
+};
 
 use crate::voting_system::{VotingSystem, find_voting_system};
 
+/// Answer to one votally client
+/// Give information then receive ballot
 async fn answer_votally_client(
     mut socket: TcpStream,
     mut end_accept_voter_rx: watch::Receiver<()>,
@@ -13,7 +17,9 @@ async fn answer_votally_client(
 ) -> io::Result<()> {
     socket.write_all(choices.as_bytes()).await?;
 
+    // begin accept ballot
     end_accept_voter_rx.changed().await.unwrap();
+    socket.write_all("\n".as_bytes()).await?;
 
     let mut reader = BufReader::new(socket);
     let mut ballot = String::new();
@@ -34,6 +40,8 @@ pub struct VotallyServer {
 impl VotallyServer {
     pub const PORT: &str = "50001";
 
+    /// Create a new VotallyServer
+    /// Initialise process accepting client's connection
     pub async fn new(address: &str, name_vote: String, choices: Vec<String>) -> Self {
         let address = address.to_owned();
         let (end_accept_voter_tx, mut end_accept_voter_rx) = watch::channel(());
@@ -43,9 +51,7 @@ impl VotallyServer {
         let response_choices = choices
             .iter()
             .fold(String::new(), |acc, c| acc + c.as_str() + ",");
-
         let response_choices = response_choices.to_owned() + "\n";
-        print!("{}", response_choices);
 
         // accept voter
         tokio::spawn(async move {
@@ -112,14 +118,16 @@ impl VotallyServer {
         }
     }
 
+    /// End accepting new connection and start the poll
     pub async fn start_ballot(&self) -> Result<(), watch::error::SendError<()>> {
         self.end_accept_voter_tx.send(())
     }
 
-    pub async fn end_vote(&mut self) {
+    /// End the poll
+    pub async fn end_poll(&mut self) {
         match self.end_accept_ballot_tx.take() {
             Some(s) => {
-                s.send(()).unwrap();
+                let _ = s.send(()); // return Err if ballots_rx is yet closed
                 self.end_accept_ballot_tx = None;
             }
             None => {}

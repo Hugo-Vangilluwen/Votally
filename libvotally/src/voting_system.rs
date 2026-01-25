@@ -20,7 +20,7 @@ impl fmt::Display for UnknownVotingSystem {
 impl Error for UnknownVotingSystem {}
 
 /// Try to find the voting system which is associated to name.
-/// Return a function to create the voting system if found
+/// Return a voting system if found
 /// and return a UnknownVotingSystem error else.
 pub fn find_voting_system(
     name: &str,
