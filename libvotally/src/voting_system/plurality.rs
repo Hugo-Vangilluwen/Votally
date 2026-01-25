@@ -21,31 +21,11 @@ pub(crate) const NAME: &str = "plurality";
 ///
 /// assert_eq!("A", p.result().unwrap());
 /// ```
-// pub fn plurality(choices: impl Iterator<Item = String>) -> VotingSystem {
-//     VotingSystem::new(
-//         NAME,
-//         BallotForm::Uninominal,
-//         choices,
-//         Box::new(|choices: &Ballots| {
-//             match choices {
-//                 Ballots::Uninominal(c) => c
-//                     .iter()
-//                     .max_by(|a, b| a.1.cmp(&b.1))
-//                     .map(|(k, _v)| k)
-//                     .cloned(),
-//                 // _ => unimplemented!()
-//             }
-//         }),
-//     )
-// }
-
 pub struct Plurality {
     info: VotingSystemInfo,
 }
 
 impl VotingSystem for Plurality {
-    // choices: impl Iterator<Item = String>,
-    // result_algorithm: ResultAlgorithm,
     fn new(choices: Vec<String>) -> Self {
         Self {
             info: VotingSystemInfo::new("plurality", BallotForm::Uninominal, choices),

@@ -24,11 +24,8 @@ impl Error for UnknownVotingSystem {}
 /// and return a UnknownVotingSystem error else.
 pub fn find_voting_system(
     name: &str,
-    choices: Vec<String>, // ) -> Result<fn(T) -> definition::VotingSystem, UnknownVotingSystem>
-) -> Result<impl definition::VotingSystem, UnknownVotingSystem>
-// where
-    // T: Iterator<Item = String>,
-{
+    choices: Vec<String>,
+) -> Result<impl definition::VotingSystem, UnknownVotingSystem> {
     match name {
         self::plurality::NAME => Ok(Plurality::new(choices)),
         _ => Err(UnknownVotingSystem(format!("{}", name))),

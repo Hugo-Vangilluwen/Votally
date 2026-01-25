@@ -4,10 +4,7 @@ use std::{io::stdin, process};
 
 use clap::Parser;
 
-// use libvotally::voting_system::find_voting_system;
-// use libvotally::network::VotallyServer;
 use libvotally::network::{VotallyClient, VotallyServer};
-// use votally_cli::read_vote;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -27,11 +24,6 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    // let (config_server, vote) = ConfigServer::build(env::args()).unwrap_or_else(|err| {
-    //     eprintln!("Problem parsing arguments: {err}");
-    //     process::exit(1);
-    // });
-
     let cli = Cli::parse();
 
     if cli.server {
@@ -39,13 +31,6 @@ async fn main() {
             eprintln!("There is not enough choice.");
             process::exit(1);
         }
-
-        // let vote = find_voting_system(&cli.voting_system).unwrap_or_else(
-        //     |err| {
-        //         eprintln!("{}", err);
-        //         process::exit(1);
-        //     },
-        // )(cli.choices.into_iter());
 
         let mut server = VotallyServer::new("localhost", cli.voting_system, cli.choices).await;
 
@@ -68,10 +53,6 @@ async fn main() {
         }
 
         println!("Winner: {}", server.result().await.unwrap());
-
-        // read_vote(&mut vote);
-
-        // println!("The winner is {}", vote.result());
     } else {
         println!("I'm a client.");
 

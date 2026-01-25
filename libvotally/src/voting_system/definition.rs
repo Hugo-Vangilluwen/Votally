@@ -44,26 +44,16 @@ pub struct VotingSystemInfo {
     /// The name of the voting system
     name: String,
     /// All ballots of the voting system
-    // choices: Vec<String>,
-    /// All ballots of the voting system
     ballot_box: Ballots,
     /// Total number of ballots
     count: usize,
 }
 
 impl VotingSystemInfo {
-    pub(crate) fn new(name: &str, ballot_form: BallotForm, choices: Vec<String>) -> Self
-// where
-        // I: Iterator<Item = &'a String>,
-    {
-        // let choices: Vec<String> = choices.map(|s| s.clone()).collect();
-
+    pub(crate) fn new(name: &str, ballot_form: BallotForm, choices: Vec<String>) -> Self {
         Self {
             name: name.to_owned(),
-            // choices: choices.clone(),
-            // ballot_form,
             ballot_box: Ballots::new(ballot_form, choices),
-            // result_algorithm,
             count: 0,
         }
     }
@@ -104,50 +94,18 @@ impl VotingSystemInfo {
     }
 }
 
-/// Type for algorithm finding the result of the election from all ballots
-// pub type ResultAlgorithm = Box<dyn Fn(&Ballots) -> Option<String>>;
-
-/// Used to describe election
-// pub struct VotingSystem<ResultAlgorithm> {
-/// The name of the voting system
-// name: String,
-// The ballot form of the voting system
-// ballot_form: BallotForm,
-/// All ballots of the voting system
-// ballot_box: Ballots,
-/// Calculate the election's result
-// result_algorithm: ResultAlgorithm,
-/// Total number of ballots
-// count: usize,
-// }
-
 pub trait VotingSystem {
     /// Create a new election
-    fn new(
-        choices: Vec<String>, // choices: impl Iterator<Item = String>,
-                              // result_algorithm: ResultAlgorithm,
-    ) -> Self;
-    // {
-    //     Self {
-    //         name: String::from(name),
-    //         // ballot_form,
-    //         ballot_box: Ballots::new(ballot_form, choices),
-    //         // result_algorithm,
-    //         count: 0,
-    //     }
-    // }
+    fn new(choices: Vec<String>) -> Self;
 
-    // Get all the information about this election
+    /// Algorithm finding the result of the election from all ballots
+    fn result_algorithm(ballots: &Ballots) -> Option<String>;
+
+    /// Get all information about this election
     fn get_info(&self) -> &VotingSystemInfo;
 
-    //
+    /// Get all mutable information about this election
     fn get_mut_info(&mut self) -> &mut VotingSystemInfo;
-
-    // pub fn get_info(&self) -> VotingSystemInfo {
-    // VotingSystemInfo::new(self.get_name(), self.get_choices())
-    // }
-
-    fn result_algorithm(ballots: &Ballots) -> Option<String>;
 
     fn vote(&mut self, ballot: &str) -> Result<(), InvalidBallot> {
         self.get_mut_info().vote(ballot)
@@ -155,7 +113,6 @@ pub trait VotingSystem {
 
     /// Calculate the election's result
     fn result(&mut self) -> Option<String> {
-        // "There is no winner".to_string()
         Self::result_algorithm(&self.get_info().ballot_box)
     }
 }

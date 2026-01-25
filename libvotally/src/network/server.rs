@@ -13,8 +13,6 @@ async fn answer_votally_client(
 ) -> io::Result<()> {
     socket.write_all(choices.as_bytes()).await?;
 
-    println!("Oook");
-
     end_accept_voter_rx.changed().await.unwrap();
 
     let mut reader = BufReader::new(socket);
@@ -36,10 +34,7 @@ pub struct VotallyServer {
 impl VotallyServer {
     pub const PORT: &str = "50001";
 
-    pub async fn new(address: &str, name_vote: String, choices: Vec<String>) -> Self
-    // where
-        // T: Iterator<Item = String> + Copy + 'static,
-    {
+    pub async fn new(address: &str, name_vote: String, choices: Vec<String>) -> Self {
         let address = address.to_owned();
         let (end_accept_voter_tx, mut end_accept_voter_rx) = watch::channel(());
         let (ballots_tx, mut ballots_rx) = mpsc::channel(100);
@@ -78,10 +73,6 @@ impl VotallyServer {
         });
 
         // make the poll
-        // let vote = Arc::new(Mutex::new((find_voting_system(&name_vote[..]).unwrap())(
-        // choices.iter().map(|s| s.to_string()),
-        // )));
-
         let vote_handle = tokio::spawn(async move {
             let choices = choices.iter().map(|s| s.to_string()).collect();
 
@@ -130,17 +121,15 @@ impl VotallyServer {
             Some(s) => {
                 s.send(()).unwrap();
                 self.end_accept_ballot_tx = None;
-            },
+            }
             None => {}
         }
     }
 
     pub async fn result(&mut self) -> Option<String> {
         match self.vote_handle.take() {
-        Some(v) => {
-            self.vote_result = v.await.ok().unwrap_or(None)
-        }
-        None => {}
+            Some(v) => self.vote_result = v.await.ok().unwrap_or(None),
+            None => {}
         }
         self.vote_handle = None;
 
