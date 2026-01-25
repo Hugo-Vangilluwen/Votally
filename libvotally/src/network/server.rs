@@ -1,6 +1,7 @@
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{mpsc, oneshot, watch};
+use tokio::task::JoinHandle;
 
 use crate::voting_system::{VotingSystem, find_voting_system};
 
@@ -11,6 +12,8 @@ async fn answer_votally_client(
     choices: String,
 ) -> io::Result<()> {
     socket.write_all(choices.as_bytes()).await?;
+
+    println!("Oook");
 
     end_accept_voter_rx.changed().await.unwrap();
 
@@ -25,22 +28,29 @@ async fn answer_votally_client(
 
 pub struct VotallyServer {
     end_accept_voter_tx: watch::Sender<()>,
+    vote_handle: Option<JoinHandle<Option<String>>>,
+    end_accept_ballot_tx: Option<oneshot::Sender<()>>,
+    vote_result: Option<String>,
 }
 
 impl VotallyServer {
     pub const PORT: &str = "50001";
 
-    pub async fn new<T>(address: &str, name_vote: String, choices: Vec<String>) -> Self
-    where
-        T: Iterator<Item = String> + Copy + 'static,
+    pub async fn new(address: &str, name_vote: String, choices: Vec<String>) -> Self
+    // where
+        // T: Iterator<Item = String> + Copy + 'static,
     {
         let address = address.to_owned();
         let (end_accept_voter_tx, mut end_accept_voter_rx) = watch::channel(());
         let (ballots_tx, mut ballots_rx) = mpsc::channel(100);
+        let (end_accept_ballot_tx, end_accept_ballot_rx) = oneshot::channel();
 
         let response_choices = choices
             .iter()
             .fold(String::new(), |acc, c| acc + c.as_str() + ",");
+
+        let response_choices = response_choices.to_owned() + "\n";
+        print!("{}", response_choices);
 
         // accept voter
         tokio::spawn(async move {
@@ -48,16 +58,22 @@ impl VotallyServer {
 
             let end_rx_clone = end_accept_voter_rx.clone();
             tokio::select! {
-                _ = async {
-                    loop {
-                        let (socket, _) = listener_tcp.accept().await?;
-
-                        tokio::spawn(answer_votally_client(socket, end_rx_clone.clone(), ballots_tx.clone(), response_choices.clone()));
+            _ = async {
+                loop {
+                    match listener_tcp.accept().await {
+                    Ok((socket, _)) => {
+                        tokio::spawn(answer_votally_client(
+                            socket,
+                            end_rx_clone.clone(),
+                            ballots_tx.clone(),
+                            response_choices.clone()
+                        ));
+                    },
+                    Err(_) => {}
                     }
-
-                    Ok::<(), io::Error>(())
-                } => {}
-                _ = end_accept_voter_rx.changed() => {}
+                }
+            } => {}
+            _ = end_accept_voter_rx.changed() => {}
             }
         });
 
@@ -66,32 +82,68 @@ impl VotallyServer {
         // choices.iter().map(|s| s.to_string()),
         // )));
 
-        tokio::spawn(async move {
+        let vote_handle = tokio::spawn(async move {
             let choices = choices.iter().map(|s| s.to_string()).collect();
 
             let mut vote = find_voting_system(&name_vote[..], choices).unwrap();
 
-            loop {
-                let message_vote = ballots_rx.recv().await.unwrap();
+            tokio::select! {
+            _ = async {
+                loop {
+                    match ballots_rx.recv().await {
+                        Some(message_vote) => {
 
-                // remove the newline at the end
-                let mut message_vote = message_vote.chars();
-                message_vote.next_back();
-                let message_vote = message_vote.as_str();
+                    // remove the newline at the end
+                    let mut message_vote = message_vote.chars();
+                    message_vote.next_back();
+                    let message_vote = message_vote.as_str();
 
-                vote.vote(message_vote)
-                    .unwrap_or_else(|err| eprintln!("{}", err));
+                    vote.vote(message_vote)
+                        .unwrap_or_else(|err| eprintln!("{}", err));
+                        },
+                        None => {
+                            break
+                        }
+                    }
+                }
+            }=> {},
+            _ = end_accept_ballot_rx => {}
+            };
 
-                break;
-            }
+            vote.result()
         });
 
         VotallyServer {
             end_accept_voter_tx,
+            vote_handle: Some(vote_handle),
+            end_accept_ballot_tx: Some(end_accept_ballot_tx),
+            vote_result: None,
         }
     }
 
-    pub async fn start_ballot(self) -> Result<(), watch::error::SendError<()>> {
+    pub async fn start_ballot(&self) -> Result<(), watch::error::SendError<()>> {
         self.end_accept_voter_tx.send(())
+    }
+
+    pub async fn end_vote(&mut self) {
+        match self.end_accept_ballot_tx.take() {
+            Some(s) => {
+                s.send(()).unwrap();
+                self.end_accept_ballot_tx = None;
+            },
+            None => {}
+        }
+    }
+
+    pub async fn result(&mut self) -> Option<String> {
+        match self.vote_handle.take() {
+        Some(v) => {
+            self.vote_result = v.await.ok().unwrap_or(None)
+        }
+        None => {}
+        }
+        self.vote_handle = None;
+
+        self.vote_result.clone()
     }
 }

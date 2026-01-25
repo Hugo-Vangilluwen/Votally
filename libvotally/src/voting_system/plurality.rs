@@ -6,17 +6,20 @@ pub(crate) const NAME: &str = "plurality";
 ///
 /// Here an exemple :
 /// ```rust
-/// use libvotal::voting_system::plurality;
+/// use libvotally::voting_system::{Plurality, VotingSystem};
 ///
-/// let mut p =
-///     plurality(vec![String::from("A"), String::from("B"), String::from("C")].into_iter());
+/// let mut p = Plurality::new(vec![
+///     String::from("A"),
+///     String::from("B"),
+///     String::from("C")
+/// ]);
 ///
 /// p.vote("A");
 /// p.vote("B");
 /// p.vote("C");
 /// p.vote("A");
 ///
-/// assert_eq!("A", p.result());
+/// assert_eq!("A", p.result().unwrap());
 /// ```
 // pub fn plurality(choices: impl Iterator<Item = String>) -> VotingSystem {
 //     VotingSystem::new(
@@ -48,7 +51,6 @@ impl VotingSystem for Plurality {
             info: VotingSystemInfo::new("plurality", BallotForm::Uninominal, choices),
         }
     }
-
 
     fn get_info(&self) -> &VotingSystemInfo {
         &self.info
@@ -86,6 +88,6 @@ mod tests {
             p.vote(v).unwrap();
         }
 
-        assert_eq!("A", p.result());
+        assert_eq!("A", p.result().unwrap());
     }
 }

@@ -154,9 +154,9 @@ pub trait VotingSystem {
     }
 
     /// Calculate the election's result
-    fn result(&mut self) -> String {
+    fn result(&mut self) -> Option<String> {
         // "There is no winner".to_string()
-        Self::result_algorithm(&self.get_info().ballot_box).expect("There is no winnner")
+        Self::result_algorithm(&self.get_info().ballot_box)
     }
 }
 

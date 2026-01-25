@@ -4,7 +4,7 @@ use std::{io::stdin, process};
 
 use clap::Parser;
 
-use libvotally::voting_system::find_voting_system;
+// use libvotally::voting_system::find_voting_system;
 // use libvotally::network::VotallyServer;
 use libvotally::network::{VotallyClient, VotallyServer};
 // use votally_cli::read_vote;
@@ -25,7 +25,8 @@ struct Cli {
     choices: Vec<String>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // let (config_server, vote) = ConfigServer::build(env::args()).unwrap_or_else(|err| {
     //     eprintln!("Problem parsing arguments: {err}");
     //     process::exit(1);
@@ -46,12 +47,27 @@ fn main() {
         //     },
         // )(cli.choices.into_iter());
 
-        let mut server =
-            VotallyServer::new("localhost", cli.voting_system, cli.choices.into_iter());
+        let mut server = VotallyServer::new("localhost", cli.voting_system, cli.choices).await;
 
-        server.answer_many(1);
+        println!("Press enter to continue:");
+        {
+            let mut line = String::new();
+            std::io::stdin()
+                .read_line(&mut line)
+                .expect("Failed to read line");
+        }
 
-        println!("Winner: {}", server.result());
+        server.start_ballot().await.unwrap();
+
+        println!("Press enter to continue:");
+        {
+            let mut line = String::new();
+            std::io::stdin()
+                .read_line(&mut line)
+                .expect("Failed to read line");
+        }
+
+        println!("Winner: {}", server.result().await.unwrap());
 
         // read_vote(&mut vote);
 

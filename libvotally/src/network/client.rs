@@ -38,9 +38,9 @@ impl VotallyClient {
     /// Get all the information from server
     // Normaly return VotingSystemInfo
     pub fn get_info(&mut self) -> Vec<String> {
-        self.write_stream("INFO");
+        // self.write_stream("INFO");
 
-        println!("Send !");
+        println!("Client started !");
 
         let info_iter = self.read_stream();
         let mut info_iter = info_iter.split(',');
