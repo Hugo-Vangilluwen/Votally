@@ -40,8 +40,6 @@ impl VotallyClient {
     /// Get all the information from server
     // Normaly return VotingSystemInfo
     pub async fn get_info(&mut self) -> Vec<String> {
-        println!("Client started !");
-
         let info_iter = self.read_stream().await;
         let mut info_iter = info_iter.split(',');
         info_iter.next_back();

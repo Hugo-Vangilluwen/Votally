@@ -1,63 +1,57 @@
-use std::io;
+use tokio::io::{self, AsyncBufReadExt};
 
-use libvotally::voting_system::*;
-
-// pub struct ConfigServer {
-//     pub name: String,
-// }
-
-// impl ConfigServer {
-//     pub fn build(mut args: impl Iterator<Item = String>) -> Result<(ConfigServer, VotingSystem), &'static str> {
-//         // program's name
-//         args.next();
-//
-//         let server_name = match args.next() {
-//             Some(arg) => arg,
-//             None => return Err("Didn't get a server name"),
-//         };
-//
-//         let vote = match args.next() {
-//             Some(arg) => find_voting_system(&arg),
-//             None => return Err("Didn't get a voting system name"),
-//         };
-//
-//         let mut choices: Vec<String> = vec![];
-//
-//         for c in args {
-//             choices.push(c);
-//         }
-//
-//         Ok((ConfigServer{name: server_name}, vote(choices)))
-//     }
-// }
+// use libvotally::voting_system::*;
 
 /// Announce in the console the different choices
-fn annouce_choices<VS: VotingSystem>(vote: &VS) {
-    let mut choices = vote.get_info().get_choices();
-    print!("Different choices are {}", choices.next().unwrap());
-    for c in choices {
+pub fn announce_choices(choices: &Vec<String>) {
+    let mut choices_iter = choices.iter();
+
+    print!("Different choices are {}", choices_iter.next().unwrap());
+    for c in choices_iter {
         print!(", {}", c);
     }
     println!();
-    println!("Enter your vote: ");
+
+    // println!("Enter your vote: ");
 }
 
 /// Read a vote
-pub fn read_vote<VS: VotingSystem>(vote: &mut VS) {
-    annouce_choices(vote);
+pub async fn read_vote() -> String {
+    let stdin = io::stdin();
+    let mut reader = io::BufReader::new(stdin);
+    let mut ballot = String::new();
 
-    match vote.get_info().get_ballot_form() {
-        BallotForm::Uninominal => {
-            let mut ballot = String::new();
+    println!("Enter your choice:");
+    reader.read_line(&mut ballot).await.unwrap();
 
-            io::stdin()
-                .read_line(&mut ballot)
-                .expect("Failed to read line");
+    ballot.to_string().trim().to_owned()
+}
 
-            match vote.vote(ballot.trim()) {
-                Ok(_) => println!("Vote cast!"),
-                Err(e) => eprintln!("{}", e),
-            }
-        }
-    }
+// pub fn read_vote<VS: VotingSystem>(vote: &mut VS) {
+// annouce_choices(vote.get_info().get_choices());
+
+// match vote.get_info().get_ballot_form() {
+//     BallotForm::Uninominal => {
+//         let mut ballot = String::new();
+//
+//         io::stdin()
+//             .read_line(&mut ballot)
+//             .expect("Failed to read line");
+//
+//         match vote.vote(ballot.trim()) {
+//             Ok(_) => println!("Vote cast!"),
+//             Err(e) => eprintln!("{}", e),
+//         }
+//     }
+// }
+// }
+
+/// Wait for the user to press enter
+pub fn press_enter(message: &str) {
+    println!("Press enter to {}", message);
+
+    let mut line = String::new();
+    std::io::stdin()
+        .read_line(&mut line)
+        .expect("Failed to read line");
 }

@@ -1,9 +1,10 @@
-use std::io::BufRead;
-use std::{io::stdin, process};
+use std::process;
 
 use clap::Parser;
 
 use libvotally::network::{VotallyClient, VotallyServer};
+
+use votally_cli::*;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -33,54 +34,29 @@ async fn main() {
 
         let mut server = VotallyServer::new("localhost", cli.voting_system, cli.choices).await;
 
-        println!("Press enter to start ballot");
-        {
-            let mut line = String::new();
-            std::io::stdin()
-                .read_line(&mut line)
-                .expect("Failed to read line");
-        }
+        press_enter("start ballot");
 
         server.start_ballot().await.unwrap();
 
-        println!("Press enter to end vote");
-        {
-            let mut line = String::new();
-            std::io::stdin()
-                .read_line(&mut line)
-                .expect("Failed to read line");
-        }
+        press_enter("end vote");
 
         server.end_poll().await;
 
         println!("Winner: {}", server.result().await.unwrap());
     } else {
-        println!("I'm a client.");
-
         let mut client = VotallyClient::new("localhost").await;
+        println!("Client started !");
 
-        let info = client.get_info().await;
+        let choices = client.get_info().await;
+        announce_choices(&choices);
 
-        println!("Choices are: ");
-
-        let mut info_iter = info.iter();
-        let last_info = info_iter.next_back().unwrap();
-        for i in info_iter {
-            print!("{}, ", i);
-        }
-        println!("{}", last_info);
-
-        let mut choice = String::new();
-        {
-            let mut stdin = stdin().lock();
-
-            while !info.contains(&choice) {
-                println!("Enter your choice:");
-                stdin.read_line(&mut choice).unwrap();
-                choice = choice.to_string().trim().to_owned();
-            }
+        let mut ballot = read_vote().await;
+        while !choices.contains(&ballot) {
+            println!("Enter your choice:");
+            ballot = read_vote().await;
         }
 
-        client.send_vote(&choice).await;
+        client.send_vote(&ballot).await;
+        println!("Vote cast !");
     }
 }
