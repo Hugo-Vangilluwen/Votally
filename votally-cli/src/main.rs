@@ -54,7 +54,7 @@ async fn main() {
 
         let mut ballot = read_vote().await;
         while !choices.contains(&ballot) {
-            println!("Enter your choice:");
+            println!("Incorect ballot");
             ballot = read_vote().await;
         }
 
