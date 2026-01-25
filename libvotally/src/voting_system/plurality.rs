@@ -19,7 +19,7 @@ pub(crate) const NAME: &str = "plurality";
 /// p.vote("C");
 /// p.vote("A");
 ///
-/// assert_eq!("A", p.result().unwrap());
+/// assert_eq!("A", p.result());
 /// ```
 pub struct Plurality {
     info: VotingSystemInfo,
@@ -40,13 +40,14 @@ impl VotingSystem for Plurality {
         &mut self.info
     }
 
-    fn result_algorithm(ballots: &Ballots) -> Option<String> {
+    fn result_algorithm(ballots: &Ballots) -> String {
         match ballots {
             Ballots::Uninominal(c) => c
                 .iter()
                 .max_by(|a, b| a.1.cmp(&b.1))
                 .map(|(k, _v)| k)
-                .cloned(),
+                .cloned()
+                .unwrap(),
             // _ => unimplemented!()
         }
     }
@@ -68,6 +69,6 @@ mod tests {
             p.vote(v).unwrap();
         }
 
-        assert_eq!("A", p.result().unwrap());
+        assert_eq!("A", p.result());
     }
 }

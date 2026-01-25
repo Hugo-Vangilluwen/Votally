@@ -53,4 +53,14 @@ impl VotallyClient {
 
         self.write_stream(vote).await;
     }
+
+    /// Get the result
+    pub async fn result(&mut self) -> String {
+        let res = self.read_stream().await;
+
+        // remove the newline at the end
+        let mut res = res.chars();
+        res.next_back();
+        res.as_str().to_owned()
+    }
 }

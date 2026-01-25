@@ -99,7 +99,7 @@ pub trait VotingSystem {
     fn new(choices: Vec<String>) -> Self;
 
     /// Algorithm finding the result of the election from all ballots
-    fn result_algorithm(ballots: &Ballots) -> Option<String>;
+    fn result_algorithm(ballots: &Ballots) -> String;
 
     /// Get all information about this election
     fn get_info(&self) -> &VotingSystemInfo;
@@ -112,7 +112,7 @@ pub trait VotingSystem {
     }
 
     /// Calculate the election's result
-    fn result(&mut self) -> Option<String> {
+    fn result(&mut self) -> String {
         Self::result_algorithm(&self.get_info().ballot_box)
     }
 }

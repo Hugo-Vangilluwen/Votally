@@ -42,7 +42,9 @@ async fn main() {
 
         server.end_poll().await;
 
-        println!("Winner: {}", server.result().await.unwrap());
+        server.calculate_result().await;
+
+        println!("Winner: {}", server.result());
     } else {
         let mut client = VotallyClient::new("localhost").await;
         println!("Client started !");
@@ -58,5 +60,7 @@ async fn main() {
 
         client.send_vote(&ballot).await;
         println!("Vote cast !");
+
+        println!("Winner: {}", client.result().await);
     }
 }

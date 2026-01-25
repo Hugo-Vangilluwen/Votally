@@ -14,27 +14,38 @@ async fn answer_votally_client(
     mut end_accept_voter_rx: watch::Receiver<()>,
     ballots_tx: mpsc::Sender<String>,
     choices: String,
+    mut result_rx: watch::Receiver<String>
 ) -> io::Result<()> {
-    socket.write_all(choices.as_bytes()).await?;
+    let (socket_rd, mut socket_wr) = socket.split();
+
+    socket_wr.write_all(choices.as_bytes()).await?;
 
     // begin accept ballot
     end_accept_voter_rx.changed().await.unwrap();
-    socket.write_all("\n".as_bytes()).await?;
+    socket_wr.write_all("\n".as_bytes()).await?;
 
-    let mut reader = BufReader::new(socket);
+    let mut reader = BufReader::new(socket_rd);
     let mut ballot = String::new();
     reader.read_line(&mut ballot).await?;
 
     ballots_tx.send(ballot).await.unwrap();
+
+    // wait the result
+    result_rx.changed().await.unwrap();
+
+    let r = result_rx.borrow().clone();
+    let r = r + "\n";
+    socket_wr.write_all(r.as_bytes()).await?;
 
     Ok(())
 }
 
 pub struct VotallyServer {
     end_accept_voter_tx: watch::Sender<()>,
-    vote_handle: Option<JoinHandle<Option<String>>>,
+    vote_handle: Option<JoinHandle<String>>,
     end_accept_ballot_tx: Option<oneshot::Sender<()>>,
     vote_result: Option<String>,
+    result_tx: watch::Sender<String>
 }
 
 impl VotallyServer {
@@ -47,6 +58,8 @@ impl VotallyServer {
         let (end_accept_voter_tx, mut end_accept_voter_rx) = watch::channel(());
         let (ballots_tx, mut ballots_rx) = mpsc::channel(100);
         let (end_accept_ballot_tx, end_accept_ballot_rx) = oneshot::channel();
+        let (result_tx, result_rx) = watch::channel(String::new());
+
 
         let response_choices = choices
             .iter()
@@ -67,7 +80,8 @@ impl VotallyServer {
                             socket,
                             end_rx_clone.clone(),
                             ballots_tx.clone(),
-                            response_choices.clone()
+                            response_choices.clone(),
+                                                           result_rx.clone()
                         ));
                     },
                     Err(_) => {}
@@ -115,6 +129,7 @@ impl VotallyServer {
             vote_handle: Some(vote_handle),
             end_accept_ballot_tx: Some(end_accept_ballot_tx),
             vote_result: None,
+            result_tx
         }
     }
 
@@ -134,13 +149,19 @@ impl VotallyServer {
         }
     }
 
-    pub async fn result(&mut self) -> Option<String> {
+    pub async fn calculate_result(&mut self) {
         match self.vote_handle.take() {
-            Some(v) => self.vote_result = v.await.ok().unwrap_or(None),
+            Some(v) => self.vote_result = v.await.ok(),
             None => {}
         }
         self.vote_handle = None;
 
-        self.vote_result.clone()
+        self.result_tx.send(self.vote_result.clone().unwrap()).unwrap();
+        self.result_tx.closed().await;
+    }
+
+
+    pub fn result(&self) -> String {
+        self.vote_result.clone().unwrap()
     }
 }
