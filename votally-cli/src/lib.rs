@@ -1,20 +1,5 @@
 use tokio::io::{self, AsyncBufReadExt};
 
-// use libvotally::voting_system::*;
-
-/// Announce in the console the different choices
-pub fn announce_choices(choices: &Vec<String>) {
-    let mut choices_iter = choices.iter();
-
-    print!("Different choices are {}", choices_iter.next().unwrap());
-    for c in choices_iter {
-        print!(", {}", c);
-    }
-    println!();
-
-    // println!("Enter your vote: ");
-}
-
 /// Read a vote
 pub async fn read_vote() -> String {
     let stdin = io::stdin();

@@ -49,11 +49,11 @@ async fn main() {
         let mut client = VotallyClient::new("localhost").await;
         println!("Client started !");
 
-        let choices = client.get_info().await;
-        announce_choices(&choices);
+        let info = client.get_info().await;
+        println!("{}", info);
 
         let mut ballot = read_vote().await;
-        while !choices.contains(&ballot) {
+        while !info.get_choices().contains(&ballot) {
             println!("Incorect ballot");
             ballot = read_vote().await;
         }

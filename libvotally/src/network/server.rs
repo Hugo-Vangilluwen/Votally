@@ -5,7 +5,9 @@ use tokio::{
     task::JoinHandle,
 };
 
-use crate::voting_system::{VotingSystem, find_voting_system};
+use crate::voting_system::{
+    MinimalVotingSystemInfo, VotingSystem, find_info_voting_system, find_voting_system,
+};
 
 /// Answer to one votally client
 /// Give information then receive ballot
@@ -13,12 +15,13 @@ async fn answer_votally_client(
     mut socket: TcpStream,
     mut end_accept_voter_rx: watch::Receiver<()>,
     ballots_tx: mpsc::Sender<String>,
-    choices: String,
-    mut result_rx: watch::Receiver<String>
+    choices: MinimalVotingSystemInfo,
+    mut result_rx: watch::Receiver<String>,
 ) -> io::Result<()> {
     let (socket_rd, mut socket_wr) = socket.split();
 
-    socket_wr.write_all(choices.as_bytes()).await?;
+    let ser_choices = ron::ser::to_string(&choices).unwrap() + "\n";
+    socket_wr.write_all(ser_choices.as_bytes()).await?;
 
     // begin accept ballot
     end_accept_voter_rx.changed().await.unwrap();
@@ -33,8 +36,7 @@ async fn answer_votally_client(
     // wait the result
     result_rx.changed().await.unwrap();
 
-    let r = result_rx.borrow().clone();
-    let r = r + "\n";
+    let r = result_rx.borrow().clone() + "\n";
     socket_wr.write_all(r.as_bytes()).await?;
 
     Ok(())
@@ -45,7 +47,7 @@ pub struct VotallyServer {
     vote_handle: Option<JoinHandle<String>>,
     end_accept_ballot_tx: Option<oneshot::Sender<()>>,
     vote_result: Option<String>,
-    result_tx: watch::Sender<String>
+    result_tx: watch::Sender<String>,
 }
 
 impl VotallyServer {
@@ -60,11 +62,7 @@ impl VotallyServer {
         let (end_accept_ballot_tx, end_accept_ballot_rx) = oneshot::channel();
         let (result_tx, result_rx) = watch::channel(String::new());
 
-
-        let response_choices = choices
-            .iter()
-            .fold(String::new(), |acc, c| acc + c.as_str() + ",");
-        let response_choices = response_choices.to_owned() + "\n";
+        let response_info = find_info_voting_system(&name_vote[..], choices.clone()).unwrap();
 
         // accept voter
         tokio::spawn(async move {
@@ -80,7 +78,7 @@ impl VotallyServer {
                             socket,
                             end_rx_clone.clone(),
                             ballots_tx.clone(),
-                            response_choices.clone(),
+                            response_info.clone(),
                                                            result_rx.clone()
                         ));
                     },
@@ -129,7 +127,7 @@ impl VotallyServer {
             vote_handle: Some(vote_handle),
             end_accept_ballot_tx: Some(end_accept_ballot_tx),
             vote_result: None,
-            result_tx
+            result_tx,
         }
     }
 
@@ -156,10 +154,11 @@ impl VotallyServer {
         }
         self.vote_handle = None;
 
-        self.result_tx.send(self.vote_result.clone().unwrap()).unwrap();
+        self.result_tx
+            .send(self.vote_result.clone().unwrap())
+            .unwrap();
         self.result_tx.closed().await;
     }
-
 
     pub fn result(&self) -> String {
         self.vote_result.clone().unwrap()

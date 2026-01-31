@@ -5,7 +5,7 @@ use tokio::{
 
 // use crate::voting_system::VotingSystemInfo;
 
-use crate::network::server::VotallyServer;
+use crate::{network::server::VotallyServer, voting_system::MinimalVotingSystemInfo};
 
 pub struct VotallyClient {
     stream: TcpStream,
@@ -39,12 +39,8 @@ impl VotallyClient {
 
     /// Get all the information from server
     // Normaly return VotingSystemInfo
-    pub async fn get_info(&mut self) -> Vec<String> {
-        let info_iter = self.read_stream().await;
-        let mut info_iter = info_iter.split(',');
-        info_iter.next_back();
-
-        info_iter.map(|s| String::from(s.trim())).collect()
+    pub async fn get_info(&mut self) -> MinimalVotingSystemInfo {
+        ron::de::from_str(&(self.read_stream().await)).unwrap()
     }
 
     /// Send the vote to the server

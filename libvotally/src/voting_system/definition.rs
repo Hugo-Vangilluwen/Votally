@@ -1,10 +1,24 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 
-/// Describe the ballot form
+/// Describe the ballot's form
+#[derive(Clone, Serialize, Deserialize)]
 pub enum BallotForm {
     Uninominal,
+}
+
+impl fmt::Display for BallotForm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                BallotForm::Uninominal => "Uninominal",
+            }
+        )
+    }
 }
 
 /// Type for a ballot box
@@ -36,6 +50,47 @@ impl Ballots {
         match self {
             Ballots::Uninominal(_) => BallotForm::Uninominal,
         }
+    }
+}
+
+/// Describe minimal information need to an election
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MinimalVotingSystemInfo {
+    /// The name of the voting system
+    name: String,
+    /// Differents choices
+    choices: Vec<String>,
+    /// The ballots' form
+    ballot_form: BallotForm,
+}
+
+impl MinimalVotingSystemInfo {
+    pub fn new(name: &str, ballot_form: BallotForm, choices: Vec<String>) -> Self {
+        Self {
+            name: name.to_owned(),
+            choices,
+            ballot_form,
+        }
+    }
+
+    pub fn get_choices(&self) -> Vec<String> {
+        self.choices.clone()
+    }
+}
+
+impl fmt::Display for MinimalVotingSystemInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "Vote {}", self.name)?;
+
+        let mut choices_iter = self.choices.iter();
+
+        write!(f, "Different choices are {}", choices_iter.next().unwrap())?;
+        for c in choices_iter {
+            write!(f, ", {}", c)?;
+        }
+        writeln!(f)?;
+
+        write!(f, "Type of ballots: {}", self.ballot_form)
     }
 }
 
