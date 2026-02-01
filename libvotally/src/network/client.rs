@@ -3,7 +3,7 @@ use tokio::{
     net::TcpStream,
 };
 
-// use crate::voting_system::VotingSystemInfo;
+use crate::voting_system::SingleBallot;
 
 use crate::{network::server::VotallyServer, voting_system::MinimalVotingSystemInfo};
 
@@ -22,7 +22,7 @@ impl VotallyClient {
     }
 
     /// Write message in TcpStream
-    async fn write_stream(&mut self, message: &str) {
+    async fn write_stream(&mut self, message: String) {
         let message = format!("{message}\n");
 
         self.stream.write_all(message.as_bytes()).await.unwrap();
@@ -44,10 +44,11 @@ impl VotallyClient {
     }
 
     /// Send the vote to the server
-    pub async fn send_vote(&mut self, vote: &str) {
+    pub async fn send_vote(&mut self, ballot: &SingleBallot) {
         let _ = self.read_stream().await; // expect a blank line
 
-        self.write_stream(vote).await;
+        let ser_singleballot = ron::ser::to_string(&ballot).unwrap() + "\n";
+        self.write_stream(ser_singleballot).await;
     }
 
     /// Get the result

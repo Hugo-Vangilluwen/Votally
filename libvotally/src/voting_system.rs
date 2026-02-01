@@ -3,7 +3,7 @@ use std::fmt;
 
 mod definition;
 
-pub use self::definition::{BallotForm, MinimalVotingSystemInfo, VotingSystem};
+pub use self::definition::{BallotForm, MinimalVotingSystemInfo, SingleBallot, VotingSystem};
 
 mod plurality;
 pub use self::plurality::Plurality;

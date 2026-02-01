@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fmt;
 
 /// Describe the ballot's form
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum BallotForm {
     Uninominal,
 }
@@ -19,6 +19,12 @@ impl fmt::Display for BallotForm {
             }
         )
     }
+}
+
+/// Type for a signle ballot
+#[derive(Serialize, Deserialize)]
+pub enum SingleBallot {
+    Uninominal(String),
 }
 
 /// Type for a ballot box
@@ -75,6 +81,16 @@ impl MinimalVotingSystemInfo {
 
     pub fn get_choices(&self) -> Vec<String> {
         self.choices.clone()
+    }
+
+    pub fn get_ballot_form(&self) -> BallotForm {
+        self.ballot_form
+    }
+
+    pub fn correct_ballot(&self, ballot: &SingleBallot) -> bool {
+        match (self.ballot_form, ballot) {
+            (BallotForm::Uninominal, SingleBallot::Uninominal(b)) => self.choices.contains(&b), // _ => false
+        }
     }
 }
 
@@ -134,14 +150,13 @@ impl VotingSystemInfo {
     }
 
     /// Just vote
-    pub fn vote(&mut self, ballot: &str) -> Result<(), InvalidBallot> {
-        match &mut self.ballot_box {
-            Ballots::Uninominal(c) => {
-                c.get(ballot)
-                    .ok_or(InvalidBallot(format!("unknown candidate {}", ballot)))?;
-                c.entry(String::from(ballot))
-                    .and_modify(|count| *count += 1);
-            }
+    pub fn vote(&mut self, ballot: SingleBallot) -> Result<(), InvalidBallot> {
+        match (&mut self.ballot_box, ballot) {
+            (Ballots::Uninominal(c), SingleBallot::Uninominal(b)) => {
+                c.get(&b)
+                    .ok_or(InvalidBallot(format!("unknown candidate {}", b)))?;
+                c.entry(b).and_modify(|count| *count += 1);
+            } // _ => Err(InvalidBallot("Incompatible ballot form"))
         }
 
         self.count += 1;
@@ -162,7 +177,7 @@ pub trait VotingSystem {
     /// Get all mutable information about this election
     fn get_mut_info(&mut self) -> &mut VotingSystemInfo;
 
-    fn vote(&mut self, ballot: &str) -> Result<(), InvalidBallot> {
+    fn vote(&mut self, ballot: SingleBallot) -> Result<(), InvalidBallot> {
         self.get_mut_info().vote(ballot)
     }
 

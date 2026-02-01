@@ -51,11 +51,12 @@ async fn main() {
 
         let info = client.get_info().await;
         println!("{}", info);
+        let ballot_form = info.get_ballot_form();
 
-        let mut ballot = read_vote().await;
-        while !info.get_choices().contains(&ballot) {
+        let mut ballot = read_vote(&ballot_form).await;
+        while !info.correct_ballot(&ballot) {
             println!("Incorect ballot");
-            ballot = read_vote().await;
+            ballot = read_vote(&ballot_form).await;
         }
 
         client.send_vote(&ballot).await;

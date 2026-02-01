@@ -1,15 +1,20 @@
+use libvotally::voting_system::{BallotForm, SingleBallot};
 use tokio::io::{self, AsyncBufReadExt};
 
 /// Read a vote
-pub async fn read_vote() -> String {
-    let stdin = io::stdin();
-    let mut reader = io::BufReader::new(stdin);
-    let mut ballot = String::new();
+pub async fn read_vote(ballot_form: &BallotForm) -> SingleBallot {
+    match ballot_form {
+        BallotForm::Uninominal => {
+            let stdin = io::stdin();
+            let mut reader = io::BufReader::new(stdin);
+            let mut ballot = String::new();
 
-    println!("Enter your choice:");
-    reader.read_line(&mut ballot).await.unwrap();
+            println!("Enter your choice:");
+            reader.read_line(&mut ballot).await.unwrap();
 
-    ballot.to_string().trim().to_owned()
+            SingleBallot::Uninominal(ballot.to_string().trim().to_owned())
+        }
+    }
 }
 
 // pub fn read_vote<VS: VotingSystem>(vote: &mut VS) {

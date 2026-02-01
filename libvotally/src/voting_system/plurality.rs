@@ -6,7 +6,7 @@ pub(crate) const NAME: &str = "plurality";
 ///
 /// Here an exemple :
 /// ```rust
-/// use libvotally::voting_system::{Plurality, VotingSystem};
+/// use libvotally::voting_system::{Plurality, VotingSystem, SingleBallot};
 ///
 /// let mut p = Plurality::new(vec![
 ///     String::from("A"),
@@ -14,10 +14,10 @@ pub(crate) const NAME: &str = "plurality";
 ///     String::from("C")
 /// ]);
 ///
-/// p.vote("A");
-/// p.vote("B");
-/// p.vote("C");
-/// p.vote("A");
+/// p.vote(SingleBallot::Uninominal("A".to_string()));
+/// p.vote(SingleBallot::Uninominal("B".to_string()));
+/// p.vote(SingleBallot::Uninominal("C".to_string()));
+/// p.vote(SingleBallot::Uninominal("A".to_string()));
 ///
 /// assert_eq!("A", p.result());
 /// ```
@@ -66,7 +66,7 @@ mod tests {
         ]);
 
         for v in vec!["A", "B", "A", "C", "B", "A"] {
-            p.vote(v).unwrap();
+            p.vote(SingleBallot::Uninominal(v.to_string())).unwrap();
         }
 
         assert_eq!("A", p.result());

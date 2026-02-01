@@ -6,7 +6,8 @@ use tokio::{
 };
 
 use crate::voting_system::{
-    MinimalVotingSystemInfo, VotingSystem, find_info_voting_system, find_voting_system,
+    MinimalVotingSystemInfo, SingleBallot, VotingSystem, find_info_voting_system,
+    find_voting_system,
 };
 
 /// Answer to one votally client
@@ -14,7 +15,7 @@ use crate::voting_system::{
 async fn answer_votally_client(
     mut socket: TcpStream,
     mut end_accept_voter_rx: watch::Receiver<()>,
-    ballots_tx: mpsc::Sender<String>,
+    ballots_tx: mpsc::Sender<SingleBallot>,
     choices: MinimalVotingSystemInfo,
     mut result_rx: watch::Receiver<String>,
 ) -> io::Result<()> {
@@ -30,6 +31,8 @@ async fn answer_votally_client(
     let mut reader = BufReader::new(socket_rd);
     let mut ballot = String::new();
     reader.read_line(&mut ballot).await?;
+
+    let ballot = ron::de::from_str(&ballot).unwrap();
 
     ballots_tx.send(ballot).await.unwrap();
 
@@ -103,9 +106,9 @@ impl VotallyServer {
                         Some(message_vote) => {
 
                     // remove the newline at the end
-                    let mut message_vote = message_vote.chars();
-                    message_vote.next_back();
-                    let message_vote = message_vote.as_str();
+                    // let mut message_vote = message_vote.chars();
+                    // message_vote.next_back();
+                    // let message_vote = message_vote.as_str();
 
                     vote.vote(message_vote)
                         .unwrap_or_else(|err| eprintln!("{}", err));
