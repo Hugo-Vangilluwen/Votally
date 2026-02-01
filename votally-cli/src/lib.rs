@@ -17,25 +17,6 @@ pub async fn read_vote(ballot_form: &BallotForm) -> SingleBallot {
     }
 }
 
-// pub fn read_vote<VS: VotingSystem>(vote: &mut VS) {
-// annouce_choices(vote.get_info().get_choices());
-
-// match vote.get_info().get_ballot_form() {
-//     BallotForm::Uninominal => {
-//         let mut ballot = String::new();
-//
-//         io::stdin()
-//             .read_line(&mut ballot)
-//             .expect("Failed to read line");
-//
-//         match vote.vote(ballot.trim()) {
-//             Ok(_) => println!("Vote cast!"),
-//             Err(e) => eprintln!("{}", e),
-//         }
-//     }
-// }
-// }
-
 /// Wait for the user to press enter
 pub fn press_enter(message: &str) {
     println!("Press enter to {}", message);

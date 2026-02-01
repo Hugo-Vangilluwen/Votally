@@ -6,8 +6,8 @@ use tokio::{
 };
 
 use crate::voting_system::{
-    MinimalVotingSystemInfo, SingleBallot, VotingSystem, find_info_voting_system,
-    find_voting_system,
+    MinimalVotingSystemInfo, SingleBallot, UnknownVotingSystem, VotingSystem,
+    correct_voting_system, find_info_voting_system, find_voting_system,
 };
 
 /// Answer to one votally client
@@ -58,7 +58,13 @@ impl VotallyServer {
 
     /// Create a new VotallyServer
     /// Initialise process accepting client's connection
-    pub async fn new(address: &str, name_vote: String, choices: Vec<String>) -> Self {
+    pub async fn build(
+        address: &str,
+        name_vote: String,
+        choices: Vec<String>,
+    ) -> Result<Self, UnknownVotingSystem> {
+        correct_voting_system(&name_vote)?;
+
         let address = address.to_owned();
         let (end_accept_voter_tx, mut end_accept_voter_rx) = watch::channel(());
         let (ballots_tx, mut ballots_rx) = mpsc::channel(100);
@@ -125,13 +131,13 @@ impl VotallyServer {
             vote.result()
         });
 
-        VotallyServer {
+        Ok(VotallyServer {
             end_accept_voter_tx,
             vote_handle: Some(vote_handle),
             end_accept_ballot_tx: Some(end_accept_ballot_tx),
             vote_result: None,
             result_tx,
-        }
+        })
     }
 
     /// End accepting new connection and start the poll

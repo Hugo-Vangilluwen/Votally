@@ -3,6 +3,7 @@ use std::process;
 use clap::Parser;
 
 use libvotally::network::{VotallyClient, VotallyServer};
+use libvotally::voting_system::UnknownVotingSystem;
 
 use votally_cli::*;
 
@@ -23,7 +24,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), UnknownVotingSystem> {
     let cli = Cli::parse();
 
     if cli.server {
@@ -32,7 +33,7 @@ async fn main() {
             process::exit(1);
         }
 
-        let mut server = VotallyServer::new("localhost", cli.voting_system, cli.choices).await;
+        let mut server = VotallyServer::build("localhost", cli.voting_system, cli.choices).await?;
 
         press_enter("start ballot");
 
@@ -64,4 +65,6 @@ async fn main() {
 
         println!("Winner: {}", client.result().await);
     }
+
+    Ok(())
 }

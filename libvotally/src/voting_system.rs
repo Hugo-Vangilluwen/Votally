@@ -49,3 +49,12 @@ pub fn find_info_voting_system(
         _ => Err(UnknownVotingSystem(format!("{}", name))),
     }
 }
+
+/// Return Ok(()) if name_vote is known and Err(UnknownVotingSystem) else
+/// Current known voting system: plurality
+pub fn correct_voting_system(name_vote: &str) -> Result<(), UnknownVotingSystem> {
+    match name_vote {
+        "plurality" => Ok(()),
+        _ => Err(UnknownVotingSystem(format!("{}", name_vote))),
+    }
+}
