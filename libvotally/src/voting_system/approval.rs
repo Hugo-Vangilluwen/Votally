@@ -1,31 +1,29 @@
 use crate::voting_system::definition::*;
 
-pub(crate) const NAME: &str = "plurality";
+pub(crate) const NAME: &str = "approval";
 
-/// # First-past-the-post voting
+/// # Approval voting
 ///
 /// Here an exemple :
 /// ```rust
-/// use libvotally::voting_system::{Plurality, VotingSystem, SingleBallot};
+/// use libvotally::voting_system::{Approval, VotingSystem, SingleBallot};
 ///
-/// let mut p = Plurality::new(vec![
+/// let mut p = Approval::new(vec![
 ///     String::from("A"),
 ///     String::from("B"),
 ///     String::from("C")
 /// ]);
 ///
-/// p.vote(SingleBallot::Uninominal("A".to_string()));
-/// p.vote(SingleBallot::Uninominal("B".to_string()));
-/// p.vote(SingleBallot::Uninominal("C".to_string()));
-/// p.vote(SingleBallot::Uninominal("A".to_string()));
+/// p.vote(SingleBallot::Approved(vec!["A".to_string(), "B".to_string()]));
+/// p.vote(SingleBallot::Approved(vec!["B".to_string()]));
 ///
-/// assert_eq!("A", p.result());
+/// assert_eq!("B", p.result());
 /// ```
-pub struct Plurality {
+pub struct Approval {
     info: VotingSystemInfo,
 }
 
-impl Plurality {
+impl Approval {
     pub fn new(choices: Vec<String>) -> Self {
         Self {
             info: VotingSystemInfo::new(NAME, BallotForm::Uninominal, choices),
@@ -33,7 +31,7 @@ impl Plurality {
     }
 }
 
-impl VotingSystem for Plurality {
+impl VotingSystem for Approval {
     fn get_info(&self) -> &VotingSystemInfo {
         &self.info
     }
@@ -60,15 +58,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn plurality_voting() {
-        let mut p = Plurality::new(vec![
+    fn approval_voting() {
+        let mut p = Approval::new(vec![
             String::from("A"),
             String::from("B"),
             String::from("C"),
         ]);
 
         for v in vec!["A", "B", "A", "C", "B", "A"] {
-            p.vote(SingleBallot::Uninominal(v.to_string())).unwrap();
+            p.vote(SingleBallot::Approved(vec![v.to_string()])).unwrap();
         }
 
         assert_eq!("A", p.result());

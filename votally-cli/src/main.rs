@@ -14,8 +14,8 @@ struct Cli {
     #[arg(short, long, action = clap::ArgAction::SetTrue)]
     server: bool,
 
-    /// Name of the used voting system among plurality
-    #[arg(short, long, default_value = "plurality")]
+    /// Name of the used voting system among approval, plurality
+    #[arg(short, long, default_value = "approval")]
     voting_system: String,
 
     /// List of choices for a server
@@ -54,10 +54,10 @@ async fn main() -> Result<(), UnknownVotingSystem> {
         println!("{}", info);
         let ballot_form = info.get_ballot_form();
 
-        let mut ballot = read_vote(&ballot_form).await;
+        let mut ballot = read_vote(&ballot_form).await.unwrap();
         while !info.correct_ballot(&ballot) {
             println!("Incorect ballot");
-            ballot = read_vote(&ballot_form).await;
+            ballot = read_vote(&ballot_form).await.unwrap();
         }
 
         client.send_vote(&ballot).await;

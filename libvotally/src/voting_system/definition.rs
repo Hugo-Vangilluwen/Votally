@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt;
 
@@ -7,6 +7,7 @@ use std::fmt;
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum BallotForm {
     Uninominal,
+    Approved,
 }
 
 impl fmt::Display for BallotForm {
@@ -16,6 +17,7 @@ impl fmt::Display for BallotForm {
             "{}",
             match self {
                 BallotForm::Uninominal => "Uninominal",
+                BallotForm::Approved => "Approved",
             }
         )
     }
@@ -25,36 +27,31 @@ impl fmt::Display for BallotForm {
 #[derive(Serialize, Deserialize)]
 pub enum SingleBallot {
     Uninominal(String),
+    Approved(Vec<String>),
 }
 
 /// Type for a ballot box
 pub enum Ballots {
-    Uninominal(HashMap<String, i32>),
+    Rates(HashMap<String, i32>),
 }
 
 impl Ballots {
     fn new(ballot_form: BallotForm, choices: Vec<String>) -> Self {
         match ballot_form {
-            BallotForm::Uninominal => {
+            BallotForm::Uninominal | BallotForm::Approved => {
                 let mut choices_hashmap: HashMap<String, i32> = HashMap::new();
 
                 choices.iter().map(|s| String::from(s)).for_each(|c| {
                     choices_hashmap.insert(c, 0);
                 });
-                Ballots::Uninominal(choices_hashmap)
+                Ballots::Rates(choices_hashmap)
             }
         }
     }
 
     fn choices(&self) -> impl Iterator<Item = &String> {
         match &self {
-            Ballots::Uninominal(c) => c.keys(),
-        }
-    }
-
-    fn ballot_form(&self) -> BallotForm {
-        match self {
-            Ballots::Uninominal(_) => BallotForm::Uninominal,
+            Ballots::Rates(c) => c.keys(),
         }
     }
 }
@@ -89,7 +86,13 @@ impl MinimalVotingSystemInfo {
 
     pub fn correct_ballot(&self, ballot: &SingleBallot) -> bool {
         match (self.ballot_form, ballot) {
-            (BallotForm::Uninominal, SingleBallot::Uninominal(b)) => self.choices.contains(&b), // _ => false
+            (BallotForm::Uninominal, SingleBallot::Uninominal(b)) => self.choices.contains(&b),
+            (BallotForm::Approved, SingleBallot::Approved(vec_b)) => {
+                vec_b.iter().all(|b| self.choices.contains(&b))
+                // TODO: Check all choices are different
+                && vec_b.iter().collect::<HashSet<_>>().len() == vec_b.len()
+            }
+            _ => false,
         }
     }
 }
@@ -114,6 +117,8 @@ impl fmt::Display for MinimalVotingSystemInfo {
 pub struct VotingSystemInfo {
     /// The name of the voting system
     name: String,
+    /// The ballots' form
+    ballot_form: BallotForm,
     /// All ballots of the voting system
     ballot_box: Ballots,
     /// Total number of ballots
@@ -124,6 +129,7 @@ impl VotingSystemInfo {
     pub(crate) fn new(name: &str, ballot_form: BallotForm, choices: Vec<String>) -> Self {
         Self {
             name: name.to_owned(),
+            ballot_form,
             ballot_box: Ballots::new(ballot_form, choices),
             count: 0,
         }
@@ -141,7 +147,12 @@ impl VotingSystemInfo {
 
     /// Get the ballot form
     pub fn get_ballot_form(&self) -> BallotForm {
-        self.ballot_box.ballot_form()
+        self.ballot_form
+    }
+
+    /// Get the ballot box
+    pub fn get_ballot_box(&self) -> &Ballots {
+        &self.ballot_box
     }
 
     /// Get the total number of ballots
@@ -152,11 +163,18 @@ impl VotingSystemInfo {
     /// Just vote
     pub fn vote(&mut self, ballot: SingleBallot) -> Result<(), InvalidBallot> {
         match (&mut self.ballot_box, ballot) {
-            (Ballots::Uninominal(c), SingleBallot::Uninominal(b)) => {
+            (Ballots::Rates(c), SingleBallot::Uninominal(b)) => {
                 c.get(&b)
                     .ok_or(InvalidBallot(format!("unknown candidate {}", b)))?;
                 c.entry(b).and_modify(|count| *count += 1);
-            } // _ => Err(InvalidBallot("Incompatible ballot form"))
+            }
+            (Ballots::Rates(c), SingleBallot::Approved(vec_approved)) => {
+                for b in vec_approved {
+                    c.get(&b)
+                        .ok_or(InvalidBallot(format!("unknown candidate {}", b)))?;
+                    c.entry(b).and_modify(|count| *count += 1);
+                }
+            } // _ => Err(InvalidBallot("Incompatible ballot form".to_string()))?
         }
 
         self.count += 1;
@@ -166,10 +184,11 @@ impl VotingSystemInfo {
 
 pub trait VotingSystem {
     /// Create a new election
-    fn new(choices: Vec<String>) -> Self;
+    // fn new(choices: Vec<String>) -> Self;
 
     /// Algorithm finding the result of the election from all ballots
-    fn result_algorithm(ballots: &Ballots) -> String;
+    // fn result_algorithm(ballots: &Ballots) -> String;
+    fn result(&self) -> String;
 
     /// Get all information about this election
     fn get_info(&self) -> &VotingSystemInfo;
@@ -181,10 +200,10 @@ pub trait VotingSystem {
         self.get_mut_info().vote(ballot)
     }
 
-    /// Calculate the election's result
-    fn result(&mut self) -> String {
-        Self::result_algorithm(&self.get_info().ballot_box)
-    }
+    // Calculate the election's result
+    // fn result(&mut self) -> String {
+    //     Self::result_algorithm(&self.get_info().ballot_box)
+    // }
 }
 
 /// Error  for invalid ballot
