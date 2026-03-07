@@ -37,7 +37,9 @@ async fn main() -> Result<(), UnknownVotingSystem> {
 
         let server_address = local_ip_address::local_ip().unwrap();
         println!("Server IP: {}", server_address);
-        let mut server = VotallyServer::build(server_address.to_string(), cli.voting_system, cli.choices).await?;
+        let mut server =
+            VotallyServer::build(server_address.to_string(), cli.voting_system, cli.choices)
+                .await?;
 
         press_enter("start ballot");
 
