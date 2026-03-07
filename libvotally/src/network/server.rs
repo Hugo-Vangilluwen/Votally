@@ -59,13 +59,12 @@ impl VotallyServer {
     /// Create a new VotallyServer
     /// Initialise process accepting client's connection
     pub async fn build(
-        address: &str,
+        address: String,
         name_vote: String,
         choices: Vec<String>,
     ) -> Result<Self, UnknownVotingSystem> {
         correct_voting_system(&name_vote)?;
 
-        let address = address.to_owned();
         let (end_accept_voter_tx, mut end_accept_voter_rx) = watch::channel(());
         let (ballots_tx, mut ballots_rx) = mpsc::channel(100);
         let (end_accept_ballot_tx, end_accept_ballot_rx) = oneshot::channel();
@@ -88,7 +87,7 @@ impl VotallyServer {
                             end_rx_clone.clone(),
                             ballots_tx.clone(),
                             response_info.clone(),
-                                                           result_rx.clone()
+                            result_rx.clone()
                         ));
                     },
                     Err(_) => {}

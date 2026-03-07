@@ -1,6 +1,7 @@
 use crate::voting_system::definition::*;
 
 pub(crate) const NAME: &str = "plurality";
+pub(crate) const LONG_NAME: &str = "Plurality voting";
 
 /// # First-past-the-post voting
 ///

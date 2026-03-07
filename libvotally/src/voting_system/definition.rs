@@ -99,7 +99,7 @@ impl MinimalVotingSystemInfo {
 
 impl fmt::Display for MinimalVotingSystemInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "Vote {}", self.name)?;
+        writeln!(f, "{}", self.name)?;
 
         let mut choices_iter = self.choices.iter();
 

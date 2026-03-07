@@ -1,5 +1,7 @@
 use std::process;
 
+use tokio::io::{self, AsyncBufReadExt};
+
 use clap::Parser;
 
 use libvotally::network::{VotallyClient, VotallyServer};
@@ -33,7 +35,9 @@ async fn main() -> Result<(), UnknownVotingSystem> {
             process::exit(1);
         }
 
-        let mut server = VotallyServer::build("localhost", cli.voting_system, cli.choices).await?;
+        let server_address = local_ip_address::local_ip().unwrap();
+        println!("Server IP: {}", server_address);
+        let mut server = VotallyServer::build(server_address.to_string(), cli.voting_system, cli.choices).await?;
 
         press_enter("start ballot");
 
@@ -47,7 +51,17 @@ async fn main() -> Result<(), UnknownVotingSystem> {
 
         println!("Winner: {}", server.result());
     } else {
-        let mut client = VotallyClient::new("localhost").await;
+        let mut server_address = String::new();
+
+        {
+            let mut stdin_reader = io::BufReader::new(io::stdin());
+
+            println!("Enter your server IP:");
+            stdin_reader.read_line(&mut server_address).await.unwrap();
+            server_address = server_address.trim().to_owned();
+        }
+
+        let mut client = VotallyClient::new(server_address).await;
         println!("Client started !");
 
         let info = client.get_info().await;
@@ -59,6 +73,7 @@ async fn main() -> Result<(), UnknownVotingSystem> {
             println!("Incorect ballot");
             ballot = read_vote(&ballot_form).await.unwrap();
         }
+        println!("Valid ballot");
 
         client.send_vote(&ballot).await;
         println!("Vote cast !");

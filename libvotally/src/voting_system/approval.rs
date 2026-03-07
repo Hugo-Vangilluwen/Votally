@@ -1,6 +1,7 @@
 use crate::voting_system::definition::*;
 
 pub(crate) const NAME: &str = "approval";
+pub(crate) const LONG_NAME: &str = "Approval voting";
 
 /// # Approval voting
 ///

@@ -76,12 +76,12 @@ pub fn find_info_voting_system(
 ) -> Result<MinimalVotingSystemInfo, UnknownVotingSystem> {
     match name {
         self::plurality::NAME => Ok(MinimalVotingSystemInfo::new(
-            name,
+            self::plurality::LONG_NAME,
             BallotForm::Uninominal,
             choices,
         )),
         self::approval::NAME => Ok(MinimalVotingSystemInfo::new(
-            name,
+            self::approval::LONG_NAME,
             BallotForm::Approved,
             choices,
         )),

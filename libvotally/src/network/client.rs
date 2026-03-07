@@ -13,8 +13,8 @@ pub struct VotallyClient {
 
 impl VotallyClient {
     /// Create a new VotalClient
-    pub async fn new(address: &str) -> Self {
-        let stream = TcpStream::connect(address.to_owned() + ":" + VotallyServer::PORT)
+    pub async fn new(address: String) -> Self {
+        let stream = TcpStream::connect(address + ":" + VotallyServer::PORT)
             .await
             .unwrap();
 
