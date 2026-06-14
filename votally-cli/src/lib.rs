@@ -25,7 +25,17 @@ pub async fn read_vote(ballot_form: &BallotForm) -> io::Result<SingleBallot> {
             let ballot = buffer.split(',').map(|s| s.trim().to_owned()).collect();
             Ok(SingleBallot::Approved(ballot))
         }
-        BallotForm::Ranked => todo!()
+        BallotForm::Ranked => {
+            let mut buffer = String::new();
+
+            println!(
+                "Enter your choices separated with comma in order of your preference (for best to worse):"
+            );
+            stdin_reader.read_line(&mut buffer).await?;
+
+            let ballot = buffer.split(',').map(|s| s.trim().to_owned()).collect();
+            Ok(SingleBallot::Ranked(ballot))
+        }
     }
 }
 

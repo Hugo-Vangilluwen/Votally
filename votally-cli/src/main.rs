@@ -16,7 +16,7 @@ struct Cli {
     #[arg(short, long, action = clap::ArgAction::SetTrue)]
     server: bool,
 
-    /// Name of the used voting system among approval, plurality
+    /// Name of the used voting system among approval, plurality, borda
     #[arg(short, long, default_value = "approval")]
     voting_system: String,
 
