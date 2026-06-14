@@ -25,6 +25,7 @@ pub async fn read_vote(ballot_form: &BallotForm) -> io::Result<SingleBallot> {
             let ballot = buffer.split(',').map(|s| s.trim().to_owned()).collect();
             Ok(SingleBallot::Approved(ballot))
         }
+        BallotForm::Ranked => todo!()
     }
 }
 
