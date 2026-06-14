@@ -4,10 +4,11 @@ use std::error::Error;
 use std::fmt;
 
 /// Describe the ballot's form
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum BallotForm {
     Uninominal,
     Approved,
+    Ranked,
 }
 
 impl fmt::Display for BallotForm {
@@ -18,40 +19,52 @@ impl fmt::Display for BallotForm {
             match self {
                 BallotForm::Uninominal => "Uninominal",
                 BallotForm::Approved => "Approved",
+                BallotForm::Ranked => "Ranked",
             }
         )
     }
 }
 
 /// Type for a signle ballot
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum SingleBallot {
     Uninominal(String),
     Approved(Vec<String>),
+    Ranked(Vec<String>),
+}
+
+impl SingleBallot {
+    fn ballot_form(&self) -> BallotForm {
+        match self {
+            SingleBallot::Uninominal(_) => BallotForm::Uninominal,
+            SingleBallot::Approved(_) => BallotForm::Approved,
+            SingleBallot::Ranked(_) => BallotForm::Ranked,
+        }
+    }
 }
 
 /// Type for a ballot box
 pub enum Ballots {
-    Rates(HashMap<String, i32>),
+    Points(HashMap<String, i32>),
 }
 
 impl Ballots {
     fn new(ballot_form: BallotForm, choices: Vec<String>) -> Self {
         match ballot_form {
-            BallotForm::Uninominal | BallotForm::Approved => {
+            BallotForm::Uninominal | BallotForm::Approved | BallotForm::Ranked => {
                 let mut choices_hashmap: HashMap<String, i32> = HashMap::new();
 
                 choices.iter().map(|s| String::from(s)).for_each(|c| {
                     choices_hashmap.insert(c, 0);
                 });
-                Ballots::Rates(choices_hashmap)
+                Ballots::Points(choices_hashmap)
             }
         }
     }
 
     fn choices(&self) -> impl Iterator<Item = &String> {
         match &self {
-            Ballots::Rates(c) => c.keys(),
+            Ballots::Points(c) => c.keys(),
         }
     }
 }
@@ -84,15 +97,50 @@ impl MinimalVotingSystemInfo {
         self.ballot_form
     }
 
-    pub fn correct_ballot(&self, ballot: &SingleBallot) -> bool {
+    pub fn correct_ballot(&self, ballot: &SingleBallot) -> Result<(), InvalidBallot> {
         match (self.ballot_form, ballot) {
-            (BallotForm::Uninominal, SingleBallot::Uninominal(b)) => self.choices.contains(&b),
-            (BallotForm::Approved, SingleBallot::Approved(vec_b)) => {
-                vec_b.iter().all(|b| self.choices.contains(&b))
-                // TODO: Check all choices are different
-                && vec_b.iter().collect::<HashSet<_>>().len() == vec_b.len()
+            (BallotForm::Uninominal, SingleBallot::Uninominal(b)) => {
+                if self.choices.contains(&b) {
+                    Ok(())
+                } else {
+                    Err(InvalidBallot(format!(
+                        "Ballot didn't contain a available choice"
+                    )))
+                }
             }
-            _ => false,
+            (BallotForm::Approved, SingleBallot::Approved(vec_b)) => {
+                let mut uniques = HashSet::new();
+                if vec_b
+                    .iter()
+                    .all(|b| self.choices.contains(&b) && uniques.insert(b.clone()))
+                {
+                    Ok(())
+                } else {
+                    Err(InvalidBallot(format!(
+                        "Ballot contains an unavailable choice"
+                    )))
+                }
+            }
+            (BallotForm::Ranked, SingleBallot::Ranked(vec_b)) => {
+                let mut uniques = HashSet::new();
+                if vec_b
+                    .iter()
+                    .all(|b| self.choices.contains(&b) && uniques.insert(b.clone()))
+                    && uniques.len() == self.choices.len()
+                {
+                    Ok(())
+                } else {
+                    Err(InvalidBallot(format!(
+                        "Ballot contains an unavailable choice or few or too choices: {:?}",
+                        ballot
+                    )))
+                }
+            }
+            _ => Err(InvalidBallot(format!(
+                "invalid ballot form : {} instead of {}",
+                ballot.ballot_form(),
+                self.ballot_form
+            ))),
         }
     }
 }
@@ -160,19 +208,38 @@ impl VotingSystemInfo {
         self.count
     }
 
+    pub fn get_minimal_info(&self) -> MinimalVotingSystemInfo {
+        MinimalVotingSystemInfo::new(
+            &self.name,
+            self.ballot_form,
+            self.ballot_box.choices().map(|s| s.to_owned()).collect(),
+        )
+    }
+
     /// Just vote
     pub fn vote(&mut self, ballot: SingleBallot) -> Result<(), InvalidBallot> {
+        self.get_minimal_info().correct_ballot(&ballot)?;
+
         match (&mut self.ballot_box, ballot) {
-            (Ballots::Rates(c), SingleBallot::Uninominal(b)) => {
+            (Ballots::Points(c), SingleBallot::Uninominal(b)) => {
                 c.get(&b)
                     .ok_or(InvalidBallot(format!("unknown candidate {}", b)))?;
                 c.entry(b).and_modify(|count| *count += 1);
             }
-            (Ballots::Rates(c), SingleBallot::Approved(vec_approved)) => {
+            (Ballots::Points(c), SingleBallot::Approved(vec_approved)) => {
                 for b in vec_approved {
                     c.get(&b)
                         .ok_or(InvalidBallot(format!("unknown candidate {}", b)))?;
                     c.entry(b).and_modify(|count| *count += 1);
+                }
+            }
+            (Ballots::Points(c), SingleBallot::Ranked(vec_ranked)) => {
+                let mut rank = 1;
+                for b in vec_ranked {
+                    c.get(&b)
+                        .ok_or(InvalidBallot(format!("unknown candidate {}", b)))?;
+                    c.entry(b).and_modify(|count| *count += rank);
+                    rank += 1;
                 }
             } // _ => Err(InvalidBallot("Incompatible ballot form".to_string()))?
         }

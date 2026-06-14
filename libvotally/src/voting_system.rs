@@ -13,6 +13,9 @@ pub use self::plurality::Plurality;
 mod approval;
 pub use self::approval::Approval;
 
+mod borda_count;
+pub use self::borda_count::BordaCount;
+
 /// Error for unknown voting system
 #[derive(Debug)]
 pub struct UnknownVotingSystem(String);
@@ -28,6 +31,7 @@ impl Error for UnknownVotingSystem {}
 pub enum VotingSystemEnum {
     Plurality(Plurality),
     Approval(Approval),
+    Borda(BordaCount),
 }
 
 impl VotingSystem for VotingSystemEnum {
@@ -35,6 +39,7 @@ impl VotingSystem for VotingSystemEnum {
         match self {
             VotingSystemEnum::Plurality(p) => p.result(),
             VotingSystemEnum::Approval(a) => a.result(),
+            VotingSystemEnum::Borda(b) => b.result(),
         }
     }
 
@@ -42,6 +47,7 @@ impl VotingSystem for VotingSystemEnum {
         match self {
             VotingSystemEnum::Plurality(p) => p.get_info(),
             VotingSystemEnum::Approval(a) => a.get_info(),
+            VotingSystemEnum::Borda(b) => b.get_info(),
         }
     }
 
@@ -49,6 +55,7 @@ impl VotingSystem for VotingSystemEnum {
         match self {
             VotingSystemEnum::Plurality(p) => p.get_mut_info(),
             VotingSystemEnum::Approval(a) => a.get_mut_info(),
+            VotingSystemEnum::Borda(b) => b.get_mut_info(),
         }
     }
 }
@@ -63,6 +70,7 @@ pub fn find_voting_system(
     match name {
         self::plurality::NAME => Ok(VotingSystemEnum::Plurality(Plurality::new(choices))),
         self::approval::NAME => Ok(VotingSystemEnum::Approval(Approval::new(choices))),
+        self::borda_count::NAME => Ok(VotingSystemEnum::Borda(BordaCount::new(choices))),
         _ => Err(UnknownVotingSystem(format!("{}", name))),
     }
 }
@@ -85,6 +93,11 @@ pub fn find_info_voting_system(
             BallotForm::Approved,
             choices,
         )),
+        self::borda_count::NAME => Ok(MinimalVotingSystemInfo::new(
+            self::borda_count::LONG_NAME,
+            BallotForm::Ranked,
+            choices,
+        )),
         _ => Err(UnknownVotingSystem(format!("{}", name))),
     }
 }
@@ -92,8 +105,15 @@ pub fn find_info_voting_system(
 /// Return Ok(()) if name_vote is known and Err(UnknownVotingSystem) else
 /// Current known voting system: plurality
 pub fn correct_voting_system(name_vote: &str) -> Result<(), UnknownVotingSystem> {
-    match name_vote {
-        self::plurality::NAME | self::approval::NAME => Ok(()),
-        _ => Err(UnknownVotingSystem(format!("{}", name_vote))),
+    if vec![
+        self::plurality::NAME,
+        self::approval::NAME,
+        self::borda_count::NAME,
+    ]
+    .contains(&name_vote)
+    {
+        Ok(())
+    } else {
+        Err(UnknownVotingSystem(format!("{}", name_vote)))
     }
 }

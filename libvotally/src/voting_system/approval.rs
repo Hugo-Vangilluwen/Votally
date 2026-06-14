@@ -27,7 +27,7 @@ pub struct Approval {
 impl Approval {
     pub fn new(choices: Vec<String>) -> Self {
         Self {
-            info: VotingSystemInfo::new(NAME, BallotForm::Uninominal, choices),
+            info: VotingSystemInfo::new(NAME, BallotForm::Approved, choices),
         }
     }
 }
@@ -43,7 +43,7 @@ impl VotingSystem for Approval {
 
     fn result(&self) -> String {
         match self.info.get_ballot_box() {
-            Ballots::Rates(c) => c
+            Ballots::Points(c) => c
                 .iter()
                 .max_by(|a, b| a.1.cmp(&b.1))
                 .map(|(k, _v)| k)
