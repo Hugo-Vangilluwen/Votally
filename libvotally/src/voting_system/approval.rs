@@ -1,8 +1,5 @@
 use crate::voting_system::definition::*;
 
-pub(crate) const NAME: &str = "approval";
-pub(crate) const LONG_NAME: &str = "Approval voting";
-
 /// # Approval voting
 ///
 /// Here an exemple :
@@ -21,36 +18,36 @@ pub(crate) const LONG_NAME: &str = "Approval voting";
 /// assert_eq!("B", p.result());
 /// ```
 pub struct Approval {
-    info: VotingSystemInfo,
-}
-
-impl Approval {
-    pub fn new(choices: Vec<String>) -> Self {
-        Self {
-            info: VotingSystemInfo::new(LONG_NAME, BallotForm::Approved, choices),
-        }
-    }
+    info: VotingSystemInfo<PointBallots>,
 }
 
 impl VotingSystem for Approval {
-    fn get_info(&self) -> &VotingSystemInfo {
+    type B = PointBallots;
+
+    const NAME: &str = "approval";
+    const LONG_NAME: &str = "Approval voting";
+
+    fn new(choices: Vec<String>) -> Self {
+        Self {
+            info: VotingSystemInfo::new(Self::LONG_NAME, BallotForm::Approved, choices),
+        }
+    }
+
+    fn get_info(&self) -> &VotingSystemInfo<PointBallots> {
         &self.info
     }
 
-    fn get_mut_info(&mut self) -> &mut VotingSystemInfo {
+    fn get_mut_info(&mut self) -> &mut VotingSystemInfo<PointBallots> {
         &mut self.info
     }
 
     fn result(&self) -> String {
-        match self.info.get_ballot_box() {
-            Ballots::Points(c) => c
-                .iter()
-                .max_by(|a, b| a.1.cmp(&b.1))
-                .map(|(k, _v)| k)
-                .cloned()
-                .unwrap(),
-            // _ => unimplemented!()
-        }
+        let PointBallots(c) = self.info.get_ballot_box();
+        c.iter()
+            .max_by(|a, b| a.1.cmp(&b.1))
+            .map(|(k, _v)| k)
+            .cloned()
+            .unwrap()
     }
 }
 

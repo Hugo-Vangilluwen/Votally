@@ -1,8 +1,5 @@
 use crate::voting_system::definition::*;
 
-pub(crate) const NAME: &str = "plurality";
-pub(crate) const LONG_NAME: &str = "Plurality voting";
-
 /// # First-past-the-post voting
 ///
 /// Here an exemple :
@@ -23,36 +20,36 @@ pub(crate) const LONG_NAME: &str = "Plurality voting";
 /// assert_eq!("A", p.result());
 /// ```
 pub struct Plurality {
-    info: VotingSystemInfo,
-}
-
-impl Plurality {
-    pub fn new(choices: Vec<String>) -> Self {
-        Self {
-            info: VotingSystemInfo::new(LONG_NAME, BallotForm::Uninominal, choices),
-        }
-    }
+    info: VotingSystemInfo<PointBallots>,
 }
 
 impl VotingSystem for Plurality {
-    fn get_info(&self) -> &VotingSystemInfo {
+    type B = PointBallots;
+
+    const NAME: &str = "plurality";
+    const LONG_NAME: &str = "Plurality voting";
+
+    fn new(choices: Vec<String>) -> Self {
+        Self {
+            info: VotingSystemInfo::new(Self::LONG_NAME, BallotForm::Uninominal, choices),
+        }
+    }
+
+    fn get_info(&self) -> &VotingSystemInfo<PointBallots> {
         &self.info
     }
 
-    fn get_mut_info(&mut self) -> &mut VotingSystemInfo {
+    fn get_mut_info(&mut self) -> &mut VotingSystemInfo<PointBallots> {
         &mut self.info
     }
 
     fn result(&self) -> String {
-        match self.info.get_ballot_box() {
-            Ballots::Points(c) => c
-                .iter()
-                .max_by(|a, b| a.1.cmp(&b.1))
-                .map(|(k, _v)| k)
-                .cloned()
-                .unwrap(),
-            // _ => unimplemented!()
-        }
+        let PointBallots(c) = self.info.get_ballot_box();
+        c.iter()
+            .max_by(|a, b| a.1.cmp(&b.1))
+            .map(|(k, _v)| k)
+            .cloned()
+            .unwrap()
     }
 }
 

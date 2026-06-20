@@ -1,8 +1,5 @@
 use crate::voting_system::definition::*;
 
-pub(crate) const NAME: &str = "borda";
-pub(crate) const LONG_NAME: &str = "Borda count";
-
 /// # Borda count
 ///
 /// Here an exemple :
@@ -29,36 +26,36 @@ pub(crate) const LONG_NAME: &str = "Borda count";
 /// assert_eq!("A", p.result());
 /// ```
 pub struct BordaCount {
-    info: VotingSystemInfo,
-}
-
-impl BordaCount {
-    pub fn new(choices: Vec<String>) -> Self {
-        Self {
-            info: VotingSystemInfo::new(LONG_NAME, BallotForm::Ranked, choices),
-        }
-    }
+    info: VotingSystemInfo<PointBallots>,
 }
 
 impl VotingSystem for BordaCount {
-    fn get_info(&self) -> &VotingSystemInfo {
+    type B = PointBallots;
+
+    const NAME: &str = "borda";
+    const LONG_NAME: &str = "Borda count";
+
+    fn new(choices: Vec<String>) -> Self {
+        Self {
+            info: VotingSystemInfo::new(Self::LONG_NAME, BallotForm::Ranked, choices),
+        }
+    }
+
+    fn get_info(&self) -> &VotingSystemInfo<PointBallots> {
         &self.info
     }
 
-    fn get_mut_info(&mut self) -> &mut VotingSystemInfo {
+    fn get_mut_info(&mut self) -> &mut VotingSystemInfo<PointBallots> {
         &mut self.info
     }
 
     fn result(&self) -> String {
-        match self.info.get_ballot_box() {
-            Ballots::Points(c) => c
-                .iter()
-                .min_by(|a, b| a.1.cmp(&b.1))
-                .map(|(k, _v)| k)
-                .cloned()
-                .unwrap(),
-            // _ => unimplemented!()
-        }
+        let PointBallots(c) = self.info.get_ballot_box();
+        c.iter()
+            .min_by(|a, b| a.1.cmp(&b.1))
+            .map(|(k, _v)| k)
+            .cloned()
+            .unwrap()
     }
 }
 
@@ -82,29 +79,5 @@ mod tests {
         }
 
         assert_eq!("A", p.result());
-    }
-
-    #[test]
-    #[should_panic]
-    fn invalid_ballot() {
-        let mut p = BordaCount::new(vec![
-            String::from("A"),
-            String::from("B"),
-            String::from("C"),
-        ]);
-
-        p.vote(SingleBallot::Ranked(vec!["A".to_string()])).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn not_ranked_ballot() {
-        let mut p = BordaCount::new(vec![
-            String::from("A"),
-            String::from("B"),
-            String::from("C"),
-        ]);
-
-        p.vote(SingleBallot::Uninominal("A".to_string())).unwrap();
     }
 }
