@@ -6,11 +6,7 @@ use crate::voting_system::definition::*;
 /// ```rust
 /// use libvotally::voting_system::{Approval, VotingSystem, SingleBallot};
 ///
-/// let mut p = Approval::new(vec![
-///     String::from("A"),
-///     String::from("B"),
-///     String::from("C")
-/// ]);
+/// let mut p = Approval::new(vec!["A", "B", "C"]);
 ///
 /// p.vote(SingleBallot::Approved(vec!["A".to_string(), "B".to_string()]));
 /// p.vote(SingleBallot::Approved(vec!["B".to_string()]));
@@ -27,7 +23,7 @@ impl VotingSystem for Approval {
     const NAME: &str = "approval";
     const LONG_NAME: &str = "Approval voting";
 
-    fn new(choices: Vec<String>) -> Self {
+    fn new(choices: Vec<&str>) -> Self {
         Self {
             info: VotingSystemInfo::build(Self::LONG_NAME, BallotForm::Approved, choices).unwrap(),
         }
@@ -57,11 +53,7 @@ mod tests {
 
     #[test]
     fn approval_voting() {
-        let mut p = Approval::new(vec![
-            String::from("A"),
-            String::from("B"),
-            String::from("C"),
-        ]);
+        let mut p = Approval::new(vec!["A", "B", "C"]);
 
         for v in vec!["A", "B", "A", "C", "B", "A"] {
             p.vote(SingleBallot::Approved(vec![v.to_string()])).unwrap();

@@ -6,11 +6,7 @@ use crate::voting_system::definition::*;
 /// ```rust
 /// use libvotally::voting_system::{Plurality, VotingSystem, SingleBallot};
 ///
-/// let mut p = Plurality::new(vec![
-///     String::from("A"),
-///     String::from("B"),
-///     String::from("C")
-/// ]);
+/// let mut p = Plurality::new(vec!["A", "B", "C"]);
 ///
 /// p.vote(SingleBallot::Uninominal("A".to_string()));
 /// p.vote(SingleBallot::Uninominal("B".to_string()));
@@ -29,7 +25,7 @@ impl VotingSystem for Plurality {
     const NAME: &str = "plurality";
     const LONG_NAME: &str = "Plurality voting";
 
-    fn new(choices: Vec<String>) -> Self {
+    fn new(choices: Vec<&str>) -> Self {
         Self {
             info: VotingSystemInfo::build(Self::LONG_NAME, BallotForm::Uninominal, choices)
                 .unwrap(),
@@ -60,11 +56,7 @@ mod tests {
 
     #[test]
     fn plurality_voting() {
-        let mut p = Plurality::new(vec![
-            String::from("A"),
-            String::from("B"),
-            String::from("C"),
-        ]);
+        let mut p = Plurality::new(vec!["A", "B", "C"]);
 
         for v in vec!["A", "B", "A", "C", "B", "A"] {
             p.vote(SingleBallot::Uninominal(v.to_string())).unwrap();

@@ -65,7 +65,7 @@ impl VotingSystemEnum {
 /// and return a UnknownVotingSystem error else.
 pub fn find_voting_system(
     name: &str,
-    choices: Vec<String>,
+    choices: Vec<&str>,
 ) -> Result<VotingSystemEnum, UnknownVotingSystem> {
     match name {
         Plurality::NAME => Ok(VotingSystemEnum::Plurality(Plurality::new(choices))),

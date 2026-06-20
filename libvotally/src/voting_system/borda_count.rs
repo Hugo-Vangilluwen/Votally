@@ -6,11 +6,7 @@ use crate::voting_system::definition::*;
 /// ```rust
 /// use libvotally::voting_system::{BordaCount, VotingSystem, SingleBallot};
 ///
-/// let mut p = BordaCount::new(vec![
-///     String::from("A"),
-///     String::from("B"),
-///     String::from("C"),
-/// ]);
+/// let mut p = BordaCount::new(vec!["A", "B", "C"]);
 ///
 /// p.vote(SingleBallot::Ranked(vec![
 ///     "A".to_string(),
@@ -35,7 +31,7 @@ impl VotingSystem for BordaCount {
     const NAME: &str = "borda";
     const LONG_NAME: &str = "Borda count";
 
-    fn new(choices: Vec<String>) -> Self {
+    fn new(choices: Vec<&str>) -> Self {
         Self {
             info: VotingSystemInfo::build(Self::LONG_NAME, BallotForm::Ranked, choices).unwrap(),
         }
@@ -65,11 +61,7 @@ mod tests {
 
     #[test]
     fn borda_voting() {
-        let mut p = BordaCount::new(vec![
-            String::from("A"),
-            String::from("B"),
-            String::from("C"),
-        ]);
+        let mut p = BordaCount::new(vec!["A", "B", "C"]);
 
         for v in vec![vec!["A", "B", "C"], vec!["C", "A", "B"]] {
             p.vote(SingleBallot::Ranked(

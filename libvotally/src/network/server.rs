@@ -61,7 +61,7 @@ impl VotallyServer {
     pub async fn build(
         address: String,
         name_vote: String,
-        choices: Vec<String>,
+        choices: Vec<&str>,
     ) -> Result<Self, UnknownVotingSystem> {
         correct_voting_system(&name_vote)?;
 
@@ -96,11 +96,13 @@ impl VotallyServer {
             }
         });
 
+        let choices_string: Vec<String> = choices.iter().map(|s| s.to_string()).collect();
+
         // make the poll
         let vote_handle = tokio::spawn(async move {
-            let choices = choices.iter().map(|s| s.to_string()).collect();
+            let choices_str: Vec<&str> = choices_string.iter().map(|s| s.as_str()).collect();
 
-            let mut vote = find_voting_system(&name_vote[..], choices).unwrap();
+            let mut vote = find_voting_system(&name_vote[..], choices_str).unwrap();
 
             tokio::select! {
             _ = async {
@@ -108,20 +110,20 @@ impl VotallyServer {
                     match ballots_rx.recv().await {
                         Some(message_vote) => {
 
-                    // remove the newline at the end
-                    // let mut message_vote = message_vote.chars();
-                    // message_vote.next_back();
-                    // let message_vote = message_vote.as_str();
+                            // remove the newline at the end
+                            // let mut message_vote = message_vote.chars();
+                            // message_vote.next_back();
+                            // let message_vote = message_vote.as_str();
 
-                    vote.vote(message_vote)
-                        .unwrap_or_else(|err| eprintln!("{}", err));
+                            vote.vote(message_vote)
+                                .unwrap_or_else(|err| eprintln!("{}", err));
                         },
                         None => {
                             break
                         }
                     }
                 }
-            }=> {},
+            } => {},
             _ = end_accept_ballot_rx => {}
             };
 
