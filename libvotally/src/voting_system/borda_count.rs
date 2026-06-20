@@ -35,7 +35,7 @@ pub struct BordaCount {
 impl BordaCount {
     pub fn new(choices: Vec<String>) -> Self {
         Self {
-            info: VotingSystemInfo::new(NAME, BallotForm::Ranked, choices),
+            info: VotingSystemInfo::new(LONG_NAME, BallotForm::Ranked, choices),
         }
     }
 }

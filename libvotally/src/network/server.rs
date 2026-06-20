@@ -7,7 +7,7 @@ use tokio::{
 
 use crate::voting_system::{
     MinimalVotingSystemInfo, SingleBallot, UnknownVotingSystem, VotingSystem,
-    correct_voting_system, find_info_voting_system, find_voting_system,
+    correct_voting_system, find_voting_system,
 };
 
 /// Answer to one votally client
@@ -70,7 +70,9 @@ impl VotallyServer {
         let (end_accept_ballot_tx, end_accept_ballot_rx) = oneshot::channel();
         let (result_tx, result_rx) = watch::channel(String::new());
 
-        let response_info = find_info_voting_system(&name_vote[..], choices.clone()).unwrap();
+        let response_info = find_voting_system(&name_vote[..], choices.clone())?
+            .get_info()
+            .get_minimal_info();
 
         // accept voter
         tokio::spawn(async move {
@@ -80,18 +82,16 @@ impl VotallyServer {
             tokio::select! {
             _ = async {
                 loop {
-                    match listener_tcp.accept().await {
-                    Ok((socket, _)) => {
+                    let _ = listener_tcp.accept().await.map(
+                        |(socket, _)|
                         tokio::spawn(answer_votally_client(
                             socket,
                             end_rx_clone.clone(),
                             ballots_tx.clone(),
                             response_info.clone(),
                             result_rx.clone()
-                        ));
-                    },
-                    Err(_) => {}
-                    }
+                        ))
+                    );
                 }
             } => {}
             _ = end_accept_voter_rx.changed() => {}

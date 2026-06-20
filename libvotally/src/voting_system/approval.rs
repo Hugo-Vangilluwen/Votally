@@ -27,7 +27,7 @@ pub struct Approval {
 impl Approval {
     pub fn new(choices: Vec<String>) -> Self {
         Self {
-            info: VotingSystemInfo::new(NAME, BallotForm::Approved, choices),
+            info: VotingSystemInfo::new(LONG_NAME, BallotForm::Approved, choices),
         }
     }
 }

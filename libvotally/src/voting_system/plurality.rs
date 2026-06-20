@@ -29,7 +29,7 @@ pub struct Plurality {
 impl Plurality {
     pub fn new(choices: Vec<String>) -> Self {
         Self {
-            info: VotingSystemInfo::new(NAME, BallotForm::Uninominal, choices),
+            info: VotingSystemInfo::new(LONG_NAME, BallotForm::Uninominal, choices),
         }
     }
 }

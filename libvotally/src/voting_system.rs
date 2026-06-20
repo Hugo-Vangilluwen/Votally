@@ -75,10 +75,10 @@ pub fn find_voting_system(
     }
 }
 
-/// Try to find the voting system which is associated to name.
-/// Return minimal information of the voting system if found
-/// and return a UnknownVotingSystem error else.
-pub fn find_info_voting_system(
+// Try to find the voting system which is associated to name.
+// Return minimal information of the voting system if found
+// and return a UnknownVotingSystem error else.
+/*pub fn find_info_voting_system(
     name: &str,
     choices: Vec<String>,
 ) -> Result<MinimalVotingSystemInfo, UnknownVotingSystem> {
@@ -100,7 +100,7 @@ pub fn find_info_voting_system(
         )),
         _ => Err(UnknownVotingSystem(format!("{}", name))),
     }
-}
+}*/
 
 /// Return Ok(()) if name_vote is known and Err(UnknownVotingSystem) else
 /// Current known voting system: plurality

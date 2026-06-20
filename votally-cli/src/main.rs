@@ -71,8 +71,11 @@ async fn main() -> Result<(), UnknownVotingSystem> {
         let ballot_form = info.get_ballot_form();
 
         let mut ballot = read_vote(&ballot_form).await.unwrap();
-        while info.correct_ballot(&ballot).is_err() {
-            println!("Incorect ballot");
+        while info
+            .correct_ballot(&ballot)
+            .inspect_err(|e| println!("{e}"))
+            .is_err()
+        {
             ballot = read_vote(&ballot_form).await.unwrap();
         }
         println!("Valid ballot");
