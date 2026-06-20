@@ -37,7 +37,7 @@ impl VotingSystem for BordaCount {
 
     fn new(choices: Vec<String>) -> Self {
         Self {
-            info: VotingSystemInfo::new(Self::LONG_NAME, BallotForm::Ranked, choices),
+            info: VotingSystemInfo::build(Self::LONG_NAME, BallotForm::Ranked, choices).unwrap(),
         }
     }
 

@@ -45,9 +45,9 @@ impl SingleBallot {
 }
 
 /// Trait for ballots boxes
-pub trait Ballots {
+pub trait Ballots: Sized {
     /// Create a new ballots box
-    fn new(ballot_form: BallotForm, choices: Vec<String>) -> Self;
+    fn build(ballot_form: BallotForm, choices: Vec<String>) -> Result<Self, InvalidBallot>;
 
     /// Get all available choices
     fn choices(&self) -> impl Iterator<Item = &String>;
@@ -60,7 +60,7 @@ pub trait Ballots {
 pub struct PointBallots(pub HashMap<String, i32>);
 
 impl Ballots for PointBallots {
-    fn new(ballot_form: BallotForm, choices: Vec<String>) -> Self {
+    fn build(ballot_form: BallotForm, choices: Vec<String>) -> Result<Self, InvalidBallot> {
         match ballot_form {
             BallotForm::Uninominal | BallotForm::Approved | BallotForm::Ranked => {
                 let mut choices_hashmap: HashMap<String, i32> = HashMap::new();
@@ -68,7 +68,7 @@ impl Ballots for PointBallots {
                 choices.iter().map(|s| String::from(s)).for_each(|c| {
                     choices_hashmap.insert(c, 0);
                 });
-                Self(choices_hashmap)
+                Ok(Self(choices_hashmap))
             }
         }
     }
@@ -103,6 +103,63 @@ impl Ballots for PointBallots {
                     rank += 1;
                 }
             } // _ => Err(InvalidBallot("Incompatible ballot form".to_string()))?
+        }
+
+        Ok(())
+    }
+}
+
+/// Type for ballot boxes where each candidate is in a kind of battle
+/// with each other
+pub struct BattleBallots(pub HashMap<(String, String), i32>);
+
+impl Ballots for BattleBallots {
+    fn build(ballot_form: BallotForm, choices: Vec<String>) -> Result<Self, InvalidBallot> {
+        match ballot_form {
+            BallotForm::Uninominal | BallotForm::Approved => Err(InvalidBallot(format!(
+                "Incompatible ballot form {}",
+                ballot_form
+            ))),
+            BallotForm::Ranked => {
+                let mut choices_hashmap: HashMap<(String, String), i32> = HashMap::new();
+
+                choices.iter().for_each(|c1| {
+                    choices.iter().for_each(|c2| {
+                        choices_hashmap.insert((String::from(c1), String::from(c2)), 0);
+                    });
+                });
+                Ok(Self(choices_hashmap))
+            }
+        }
+    }
+
+    fn choices(&self) -> impl Iterator<Item = &String> {
+        let BattleBallots(c) = self;
+        HashSet::<&String>::from_iter(c.keys().map(|(a, _)| a)).into_iter()
+    }
+
+    fn vote(&mut self, ballot: SingleBallot) -> Result<(), InvalidBallot> {
+        let BattleBallots(c) = self;
+
+        match ballot {
+            SingleBallot::Ranked(vec_ranked) => {
+                let mut b_previous = None;
+                let choices = HashSet::<String>::from_iter(c.keys().cloned().map(|(a, _)| a));
+
+                for b in vec_ranked {
+                    // Check if b is an available choice
+                    if !choices.contains(&b) {
+                        Err(InvalidBallot(format!("unknown candidate {}", b)))?
+                    }
+
+                    b_previous.map(|bp| {
+                        c.entry((b.clone(), bp)).and_modify(|count| *count += 1)
+                    });
+
+                    b_previous = Some(b)
+                }
+            }
+            _ => Err(InvalidBallot("Incompatible ballot form".to_string()))?,
         }
 
         Ok(())
@@ -219,13 +276,17 @@ pub struct VotingSystemInfo<B: Ballots> {
 
 impl<B: Ballots> VotingSystemInfo<B> {
     /// Create a new voting system info
-    pub(crate) fn new(name: &str, ballot_form: BallotForm, choices: Vec<String>) -> Self {
-        Self {
+    pub(crate) fn build(
+        name: &str,
+        ballot_form: BallotForm,
+        choices: Vec<String>,
+    ) -> Result<Self, InvalidBallot> {
+        Ok(Self {
             name: name.to_owned(),
             ballot_form,
-            ballot_box: B::new(ballot_form, choices),
+            ballot_box: B::build(ballot_form, choices)?,
             count: 0,
-        }
+        })
     }
 
     /// Get the name of the voting system
@@ -258,9 +319,7 @@ impl<B: Ballots> VotingSystemInfo<B> {
         MinimalVotingSystemInfo::new(
             &self.name,
             self.ballot_form,
-            self.get_choices()
-                .map(|s| s.to_owned())
-                .collect(),
+            self.get_choices().map(|s| s.to_owned()).collect(),
         )
     }
 
@@ -326,6 +385,37 @@ mod test {
     use super::*;
 
     #[test]
+    fn ballot_trait() {
+        let p = PointBallots::build(
+            BallotForm::Uninominal,
+            vec!["A".to_string(), "B".to_string(), "C".to_string()],
+        )
+        .unwrap();
+
+        assert_eq!(
+            HashSet::<&String>::from_iter(p.choices()),
+            HashSet::from_iter(
+                vec![&"A".to_string(), &"B".to_string(), &"C".to_string()].into_iter()
+            )
+        );
+
+        let b = BattleBallots::build(
+            BallotForm::Ranked,
+            vec!["A".to_string(), "B".to_string(), "C".to_string()],
+        )
+        .unwrap();
+
+        assert_eq!(
+            HashSet::<&String>::from_iter(b.choices()),
+            HashSet::from_iter(
+                vec![&"A".to_string(), &"B".to_string(), &"C".to_string()].into_iter()
+            )
+        );
+
+        assert!(BattleBallots::build(BallotForm::Uninominal, vec!["A".to_string()]).is_err());
+    }
+
+    #[test]
     fn ballot_uninominal() {
         let mvsi = MinimalVotingSystemInfo::new(
             "test",
@@ -335,11 +425,14 @@ mod test {
 
         assert!(
             mvsi.check_ballot(&SingleBallot::Uninominal("A".to_string()))
-            .is_ok()
+                .is_ok()
         );
         assert!(
-            mvsi.check_ballot(&SingleBallot::Approved(vec!["A".to_string(), "C".to_string()]))
-                .is_err()
+            mvsi.check_ballot(&SingleBallot::Approved(vec![
+                "A".to_string(),
+                "C".to_string()
+            ]))
+            .is_err()
         );
     }
 

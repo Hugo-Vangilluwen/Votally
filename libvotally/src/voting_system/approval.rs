@@ -29,7 +29,7 @@ impl VotingSystem for Approval {
 
     fn new(choices: Vec<String>) -> Self {
         Self {
-            info: VotingSystemInfo::new(Self::LONG_NAME, BallotForm::Approved, choices),
+            info: VotingSystemInfo::build(Self::LONG_NAME, BallotForm::Approved, choices).unwrap(),
         }
     }
 

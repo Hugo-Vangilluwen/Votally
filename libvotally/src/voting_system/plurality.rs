@@ -31,7 +31,8 @@ impl VotingSystem for Plurality {
 
     fn new(choices: Vec<String>) -> Self {
         Self {
-            info: VotingSystemInfo::new(Self::LONG_NAME, BallotForm::Uninominal, choices),
+            info: VotingSystemInfo::build(Self::LONG_NAME, BallotForm::Uninominal, choices)
+                .unwrap(),
         }
     }
 
