@@ -21,9 +21,7 @@ use crate::voting_system::definition::*;
 ///
 /// assert_eq!("A", p.result());
 /// ```
-pub struct BordaCount {
-    info: VotingSystemInfo<PointBallots>,
-}
+pub struct BordaCount(VotingSystemInfo<PointBallots>);
 
 impl VotingSystem for BordaCount {
     type B = PointBallots;
@@ -32,21 +30,23 @@ impl VotingSystem for BordaCount {
     const LONG_NAME: &str = "Borda count";
 
     fn new(choices: &Vec<&str>) -> Self {
-        Self {
-            info: VotingSystemInfo::build(Self::LONG_NAME, BallotForm::Ranked, choices).unwrap(),
-        }
+        Self(VotingSystemInfo::new(
+            Self::LONG_NAME,
+            BallotForm::Ranked,
+            choices,
+        ))
     }
 
     fn get_info(&self) -> &VotingSystemInfo<PointBallots> {
-        &self.info
+        &self.0
     }
 
     fn get_mut_info(&mut self) -> &mut VotingSystemInfo<PointBallots> {
-        &mut self.info
+        &mut self.0
     }
 
     fn result(&self) -> String {
-        let PointBallots(c) = self.info.get_ballot_box();
+        let PointBallots(c) = self.0.get_ballot_box();
         c.iter()
             .min_by(|a, b| a.1.cmp(&b.1))
             .map(|(k, _v)| k)

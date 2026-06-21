@@ -16,9 +16,7 @@ use crate::voting_system::definition::*;
 ///
 /// assert_eq!("B", p.result());
 /// ```
-pub struct Approval {
-    info: VotingSystemInfo<PointBallots>,
-}
+pub struct Approval(VotingSystemInfo<PointBallots>);
 
 impl VotingSystem for Approval {
     type B = PointBallots;
@@ -27,21 +25,23 @@ impl VotingSystem for Approval {
     const LONG_NAME: &str = "Approval voting";
 
     fn new(choices: &Vec<&str>) -> Self {
-        Self {
-            info: VotingSystemInfo::build(Self::LONG_NAME, BallotForm::Approved, choices).unwrap(),
-        }
+        Self(VotingSystemInfo::new(
+            Self::LONG_NAME,
+            BallotForm::Approved,
+            choices,
+        ))
     }
 
     fn get_info(&self) -> &VotingSystemInfo<PointBallots> {
-        &self.info
+        &self.0
     }
 
     fn get_mut_info(&mut self) -> &mut VotingSystemInfo<PointBallots> {
-        &mut self.info
+        &mut self.0
     }
 
     fn result(&self) -> String {
-        let PointBallots(c) = self.info.get_ballot_box();
+        let PointBallots(c) = self.0.get_ballot_box();
         c.iter()
             .max_by(|a, b| a.1.cmp(&b.1))
             .map(|(k, _v)| k)

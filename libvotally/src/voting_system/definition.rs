@@ -47,7 +47,7 @@ impl SingleBallot {
 /// Trait for ballots boxes
 pub trait Ballots: Sized {
     /// Create a new ballots box
-    fn build(ballot_form: BallotForm, choices: &Vec<&str>) -> Result<Self, InvalidBallot>;
+    fn new(choices: &Vec<&str>) -> Self;
 
     /// Get all available choices
     fn choices(&self) -> impl Iterator<Item = &String>;
@@ -60,17 +60,13 @@ pub trait Ballots: Sized {
 pub struct PointBallots(pub HashMap<String, i32>);
 
 impl Ballots for PointBallots {
-    fn build(ballot_form: BallotForm, choices: &Vec<&str>) -> Result<Self, InvalidBallot> {
-        match ballot_form {
-            BallotForm::Uninominal | BallotForm::Approved | BallotForm::Ranked => {
-                let mut choices_hashmap: HashMap<String, i32> = HashMap::new();
+    fn new(choices: &Vec<&str>) -> Self {
+        let mut choices_hashmap: HashMap<String, i32> = HashMap::new();
 
-                choices.iter().for_each(|c| {
-                    choices_hashmap.insert(c.to_string(), 0);
-                });
-                Ok(Self(choices_hashmap))
-            }
-        }
+        choices.iter().for_each(|c| {
+            choices_hashmap.insert(c.to_string(), 0);
+        });
+        Self(choices_hashmap)
     }
 
     fn choices(&self) -> impl Iterator<Item = &String> {
@@ -114,23 +110,15 @@ impl Ballots for PointBallots {
 pub struct BattleBallots(pub HashMap<(String, String), i32>);
 
 impl Ballots for BattleBallots {
-    fn build(ballot_form: BallotForm, choices: &Vec<&str>) -> Result<Self, InvalidBallot> {
-        match ballot_form {
-            BallotForm::Ranked => {
-                let mut choices_hashmap: HashMap<(String, String), i32> = HashMap::new();
+    fn new(choices: &Vec<&str>) -> Self {
+        let mut choices_hashmap: HashMap<(String, String), i32> = HashMap::new();
 
-                choices.iter().for_each(|c1| {
-                    choices.iter().for_each(|c2| {
-                        choices_hashmap.insert((c1.to_string(), c2.to_string()), 0);
-                    });
-                });
-                Ok(Self(choices_hashmap))
-            }
-            _ => Err(InvalidBallot(format!(
-                "Incompatible ballot form {}",
-                ballot_form
-            ))),
-        }
+        choices.iter().for_each(|c1| {
+            choices.iter().for_each(|c2| {
+                choices_hashmap.insert((c1.to_string(), c2.to_string()), 0);
+            });
+        });
+        Self(choices_hashmap)
     }
 
     fn choices(&self) -> impl Iterator<Item = &String> {
@@ -276,17 +264,13 @@ pub struct VotingSystemInfo<B: Ballots> {
 
 impl<B: Ballots> VotingSystemInfo<B> {
     /// Create a new voting system info
-    pub(crate) fn build(
-        name: &str,
-        ballot_form: BallotForm,
-        choices: &Vec<&str>,
-    ) -> Result<Self, InvalidBallot> {
-        Ok(Self {
+    pub(crate) fn new(name: &str, ballot_form: BallotForm, choices: &Vec<&str>) -> Self {
+        Self {
             name: name.to_owned(),
             ballot_form,
-            ballot_box: B::build(ballot_form, choices)?,
+            ballot_box: B::new(choices),
             count: 0,
-        })
+        }
     }
 
     /// Get the name of the voting system
@@ -387,7 +371,7 @@ mod test {
 
     #[test]
     fn ballot_trait() {
-        let mut p = PointBallots::build(BallotForm::Uninominal, &vec!["A", "B", "C"]).unwrap();
+        let mut p = PointBallots::new(&vec!["A", "B", "C"]);
         assert_eq!(
             HashSet::<&String>::from_iter(p.choices()),
             HashSet::from_iter(
@@ -396,14 +380,13 @@ mod test {
         );
         assert!(p.vote(SingleBallot::Uninominal("D".to_string())).is_err());
 
-        let b = BattleBallots::build(BallotForm::Ranked, &vec!["A", "B", "C"]).unwrap();
+        let b = BattleBallots::new(&vec!["A", "B", "C"]);
         assert_eq!(
             HashSet::<&String>::from_iter(b.choices()),
             HashSet::from_iter(
                 vec![&"A".to_string(), &"B".to_string(), &"C".to_string()].into_iter()
             )
         );
-        assert!(BattleBallots::build(BallotForm::Uninominal, &vec!["A"]).is_err());
     }
 
     #[test]
