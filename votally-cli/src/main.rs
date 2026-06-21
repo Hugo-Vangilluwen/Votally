@@ -16,7 +16,7 @@ struct Cli {
     #[arg(short, long, action = clap::ArgAction::SetTrue)]
     server: bool,
 
-    /// Name of the used voting system among approval, plurality, borda
+    /// Name of the used voting system among approval, plurality, borda, black
     #[arg(short, long, default_value = "approval")]
     voting_system: String,
 
@@ -38,7 +38,7 @@ async fn main() -> Result<(), UnknownVotingSystem> {
         let server_address = local_ip_address::local_ip().unwrap();
         println!("Server IP: {}", server_address);
         let mut server =
-            VotallyServer::build(server_address.to_string(), cli.voting_system, cli.choices)
+            VotallyServer::build(server_address.to_string(), cli.voting_system, &cli.choices.iter().map(|c| c as &str).collect())
                 .await?;
 
         press_enter("start ballot");
@@ -72,7 +72,7 @@ async fn main() -> Result<(), UnknownVotingSystem> {
 
         let mut ballot = read_vote(&ballot_form).await.unwrap();
         while info
-            .correct_ballot(&ballot)
+            .check_ballot(&ballot)
             .inspect_err(|e| println!("{e}"))
             .is_err()
         {

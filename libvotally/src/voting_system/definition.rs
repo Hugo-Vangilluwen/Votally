@@ -26,7 +26,7 @@ impl fmt::Display for BallotForm {
 }
 
 /// Type for a signle ballot
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum SingleBallot {
     Uninominal(String),
     Approved(Vec<String>),
@@ -47,7 +47,7 @@ impl SingleBallot {
 /// Trait for ballots boxes
 pub trait Ballots: Sized {
     /// Create a new ballots box
-    fn build(ballot_form: BallotForm, choices: Vec<&str>) -> Result<Self, InvalidBallot>;
+    fn build(ballot_form: BallotForm, choices: &Vec<&str>) -> Result<Self, InvalidBallot>;
 
     /// Get all available choices
     fn choices(&self) -> impl Iterator<Item = &String>;
@@ -60,7 +60,7 @@ pub trait Ballots: Sized {
 pub struct PointBallots(pub HashMap<String, i32>);
 
 impl Ballots for PointBallots {
-    fn build(ballot_form: BallotForm, choices: Vec<&str>) -> Result<Self, InvalidBallot> {
+    fn build(ballot_form: BallotForm, choices: &Vec<&str>) -> Result<Self, InvalidBallot> {
         match ballot_form {
             BallotForm::Uninominal | BallotForm::Approved | BallotForm::Ranked => {
                 let mut choices_hashmap: HashMap<String, i32> = HashMap::new();
@@ -114,12 +114,8 @@ impl Ballots for PointBallots {
 pub struct BattleBallots(pub HashMap<(String, String), i32>);
 
 impl Ballots for BattleBallots {
-    fn build(ballot_form: BallotForm, choices: Vec<&str>) -> Result<Self, InvalidBallot> {
+    fn build(ballot_form: BallotForm, choices: &Vec<&str>) -> Result<Self, InvalidBallot> {
         match ballot_form {
-            BallotForm::Uninominal | BallotForm::Approved => Err(InvalidBallot(format!(
-                "Incompatible ballot form {}",
-                ballot_form
-            ))),
             BallotForm::Ranked => {
                 let mut choices_hashmap: HashMap<(String, String), i32> = HashMap::new();
 
@@ -130,6 +126,10 @@ impl Ballots for BattleBallots {
                 });
                 Ok(Self(choices_hashmap))
             }
+            _ => Err(InvalidBallot(format!(
+                "Incompatible ballot form {}",
+                ballot_form
+            ))),
         }
     }
 
@@ -143,18 +143,20 @@ impl Ballots for BattleBallots {
 
         match ballot {
             SingleBallot::Ranked(vec_ranked) => {
-                let mut b_previous = None;
                 let choices = HashSet::<String>::from_iter(c.keys().cloned().map(|(a, _)| a));
 
-                for b in vec_ranked {
+                let mut iter_ranked = vec_ranked.into_iter();
+
+                // for b1 in iter_ranked {
+                while let Some(b1) = iter_ranked.next() {
                     // Check if b is an available choice
-                    if !choices.contains(&b) {
-                        Err(InvalidBallot(format!("unknown candidate {}", b)))?
+                    if !choices.contains(&b1) {
+                        Err(InvalidBallot(format!("unknown candidate {}", b1)))?
                     }
 
-                    b_previous.map(|bp| c.entry((b.clone(), bp)).and_modify(|count| *count += 1));
-
-                    b_previous = Some(b)
+                    iter_ranked.clone().for_each(|b2| {
+                        c.entry((b1.clone(), b2)).and_modify(|count| *count += 1);
+                    })
                 }
             }
             _ => Err(InvalidBallot("Incompatible ballot form".to_string()))?,
@@ -277,7 +279,7 @@ impl<B: Ballots> VotingSystemInfo<B> {
     pub(crate) fn build(
         name: &str,
         ballot_form: BallotForm,
-        choices: Vec<&str>,
+        choices: &Vec<&str>,
     ) -> Result<Self, InvalidBallot> {
         Ok(Self {
             name: name.to_owned(),
@@ -339,7 +341,7 @@ pub trait VotingSystem {
     const LONG_NAME: &str;
 
     /// Create a new election
-    fn new(choices: Vec<&str>) -> Self;
+    fn new(choices: &Vec<&str>) -> Self;
 
     /// Algorithm finding the result of the election from all ballots
     // fn result_algorithm(ballots: &Ballots) -> String;
@@ -356,6 +358,7 @@ pub trait VotingSystem {
         self.get_mut_info().vote(ballot)
     }
 
+    /// Get minimal information about this election
     fn get_minimal_info(&self) -> MinimalVotingSystemInfo {
         self.get_info().get_minimal_info()
     }
@@ -384,25 +387,23 @@ mod test {
 
     #[test]
     fn ballot_trait() {
-        let p = PointBallots::build(BallotForm::Uninominal, vec!["A", "B", "C"]).unwrap();
-
+        let mut p = PointBallots::build(BallotForm::Uninominal, &vec!["A", "B", "C"]).unwrap();
         assert_eq!(
             HashSet::<&String>::from_iter(p.choices()),
             HashSet::from_iter(
                 vec![&"A".to_string(), &"B".to_string(), &"C".to_string()].into_iter()
             )
         );
+        assert!(p.vote(SingleBallot::Uninominal("D".to_string())).is_err());
 
-        let b = BattleBallots::build(BallotForm::Ranked, vec!["A", "B", "C"]).unwrap();
-
+        let b = BattleBallots::build(BallotForm::Ranked, &vec!["A", "B", "C"]).unwrap();
         assert_eq!(
             HashSet::<&String>::from_iter(b.choices()),
             HashSet::from_iter(
                 vec![&"A".to_string(), &"B".to_string(), &"C".to_string()].into_iter()
             )
         );
-
-        assert!(BattleBallots::build(BallotForm::Uninominal, vec!["A"]).is_err());
+        assert!(BattleBallots::build(BallotForm::Uninominal, &vec!["A"]).is_err());
     }
 
     #[test]

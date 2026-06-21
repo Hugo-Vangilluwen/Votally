@@ -61,7 +61,7 @@ impl VotallyServer {
     pub async fn build(
         address: String,
         name_vote: String,
-        choices: Vec<&str>,
+        choices: &Vec<&str>,
     ) -> Result<Self, UnknownVotingSystem> {
         correct_voting_system(&name_vote)?;
 
@@ -70,7 +70,7 @@ impl VotallyServer {
         let (end_accept_ballot_tx, end_accept_ballot_rx) = oneshot::channel();
         let (result_tx, result_rx) = watch::channel(String::new());
 
-        let response_info = find_voting_system(&name_vote[..], choices.clone())?.get_minimal_info();
+        let response_info = find_voting_system(&name_vote[..], choices)?.get_minimal_info();
 
         // accept voter
         tokio::spawn(async move {
@@ -102,7 +102,7 @@ impl VotallyServer {
         let vote_handle = tokio::spawn(async move {
             let choices_str: Vec<&str> = choices_string.iter().map(|s| s.as_str()).collect();
 
-            let mut vote = find_voting_system(&name_vote[..], choices_str).unwrap();
+            let mut vote = find_voting_system(&name_vote[..], &choices_str).unwrap();
 
             tokio::select! {
             _ = async {
