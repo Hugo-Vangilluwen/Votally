@@ -23,7 +23,7 @@ impl VotingSystem for Plurality {
     const NAME: &str = "plurality";
     const LONG_NAME: &str = "Plurality voting";
 
-    fn new(choices: &Vec<&str>) -> Self {
+    fn new(choices: &Vec<impl ToString>) -> Self {
         Self(VotingSystemInfo::new(
             Self::LONG_NAME,
             BallotForm::Uninominal,

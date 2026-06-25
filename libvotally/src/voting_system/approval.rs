@@ -24,7 +24,7 @@ impl VotingSystem for Approval {
     const NAME: &str = "approval";
     const LONG_NAME: &str = "Approval voting";
 
-    fn new(choices: &Vec<&str>) -> Self {
+    fn new(choices: &Vec<impl ToString>) -> Self {
         Self(VotingSystemInfo::new(
             Self::LONG_NAME,
             BallotForm::Approved,

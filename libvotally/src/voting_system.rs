@@ -71,10 +71,10 @@ impl VotingSystemEnum {
 /// Return a voting system if found
 /// and return a UnknownVotingSystem error else.
 pub fn find_voting_system(
-    name: &str,
-    choices: &Vec<&str>,
+    name: &String,
+    choices: &Vec<impl ToString>,
 ) -> Result<VotingSystemEnum, UnknownVotingSystem> {
-    match name {
+    match name.as_str() {
         Plurality::NAME => Ok(VotingSystemEnum::Plurality(Plurality::new(choices))),
         Approval::NAME => Ok(VotingSystemEnum::Approval(Approval::new(choices))),
         BordaCount::NAME => Ok(VotingSystemEnum::Borda(BordaCount::new(choices))),
@@ -85,14 +85,14 @@ pub fn find_voting_system(
 
 /// Return Ok(()) if name_vote is known and Err(UnknownVotingSystem) else
 /// Current known voting system: plurality
-pub fn correct_voting_system(name_vote: &str) -> Result<(), UnknownVotingSystem> {
+pub fn correct_voting_system(name_vote: &String) -> Result<(), UnknownVotingSystem> {
     if vec![
         Plurality::NAME,
         Approval::NAME,
         BordaCount::NAME,
         BlackMethod::NAME,
     ]
-    .contains(&name_vote)
+    .contains(&name_vote.as_str())
     {
         Ok(())
     } else {

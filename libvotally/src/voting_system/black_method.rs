@@ -1,7 +1,7 @@
 use crate::voting_system::definition::*;
 
 impl Ballots for (PointBallots, BattleBallots) {
-    fn new(choices: &Vec<&str>) -> Self {
+    fn new(choices: &Vec<impl ToString>) -> Self {
         (PointBallots::new(choices), BattleBallots::new(choices))
     }
 
@@ -51,7 +51,7 @@ impl VotingSystem for BlackMethod {
     const NAME: &str = "black";
     const LONG_NAME: &str = "Black's method";
 
-    fn new(choices: &Vec<&str>) -> Self {
+    fn new(choices: &Vec<impl ToString>) -> Self {
         Self(VotingSystemInfo::new(
             Self::LONG_NAME,
             BallotForm::Ranked,

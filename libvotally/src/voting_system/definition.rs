@@ -48,7 +48,7 @@ impl SingleBallot {
 /// Trait for ballots boxes
 pub trait Ballots: Sized {
     /// Create a new ballots box
-    fn new(choices: &Vec<&str>) -> Self;
+    fn new(choices: &Vec<impl ToString>) -> Self;
 
     /// Get all available choices
     fn choices(&self) -> impl Iterator<Item = &String>;
@@ -61,7 +61,7 @@ pub trait Ballots: Sized {
 pub struct PointBallots(pub(crate) HashMap<String, i32>);
 
 impl Ballots for PointBallots {
-    fn new(choices: &Vec<&str>) -> Self {
+    fn new(choices: &Vec<impl ToString>) -> Self {
         let mut choices_hashmap: HashMap<String, i32> = HashMap::new();
 
         choices.iter().for_each(|c| {
@@ -111,7 +111,7 @@ impl Ballots for PointBallots {
 pub struct BattleBallots(pub(crate) HashMap<(String, String), i32>);
 
 impl Ballots for BattleBallots {
-    fn new(choices: &Vec<&str>) -> Self {
+    fn new(choices: &Vec<impl ToString>) -> Self {
         let mut choices_hashmap: HashMap<(String, String), i32> = HashMap::new();
 
         choices.iter().for_each(|c1| {
@@ -271,9 +271,9 @@ pub struct VotingSystemInfo<B: Ballots> {
 
 impl<B: Ballots> VotingSystemInfo<B> {
     /// Create a new voting system info
-    pub(crate) fn new(name: &str, ballot_form: BallotForm, choices: &Vec<&str>) -> Self {
+    pub(crate) fn new(name: &str, ballot_form: BallotForm, choices: &Vec<impl ToString>) -> Self {
         Self {
-            name: name.to_owned(),
+            name: name.to_string(),
             ballot_form,
             ballot_box: B::new(choices),
             count: 0,
@@ -332,7 +332,7 @@ pub trait VotingSystem {
     const LONG_NAME: &str;
 
     /// Create a new election
-    fn new(choices: &Vec<&str>) -> Self;
+    fn new(choices: &Vec<impl ToString>) -> Self;
 
     /// Algorithm finding the result of the election from all ballots
     // fn result_algorithm(ballots: &Ballots) -> String;

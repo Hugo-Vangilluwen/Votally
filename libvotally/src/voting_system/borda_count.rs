@@ -29,7 +29,7 @@ impl VotingSystem for BordaCount {
     const NAME: &str = "borda";
     const LONG_NAME: &str = "Borda count";
 
-    fn new(choices: &Vec<&str>) -> Self {
+    fn new(choices: &Vec<impl ToString>) -> Self {
         Self(VotingSystemInfo::new(
             Self::LONG_NAME,
             BallotForm::Ranked,

@@ -40,7 +40,7 @@ async fn main() -> Result<(), UnknownVotingSystem> {
         let mut server = VotallyServer::build(
             server_address.to_string(),
             cli.voting_system,
-            &cli.choices.iter().map(|c| c as &str).collect(),
+            &cli.choices,
         )
         .await?;
 
