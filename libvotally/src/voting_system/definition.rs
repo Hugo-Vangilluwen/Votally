@@ -1,3 +1,4 @@
+use rand::{prelude::SliceRandom, rng};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -57,7 +58,7 @@ pub trait Ballots: Sized {
 }
 
 /// Type for ballot boxes where each candidate has points
-pub struct PointBallots(pub HashMap<String, i32>);
+pub struct PointBallots(pub(crate) HashMap<String, i32>);
 
 impl Ballots for PointBallots {
     fn new(choices: &Vec<&str>) -> Self {
@@ -107,7 +108,7 @@ impl Ballots for PointBallots {
 
 /// Type for ballot boxes where each candidate is in a kind of battle
 /// with each other
-pub struct BattleBallots(pub HashMap<(String, String), i32>);
+pub struct BattleBallots(pub(crate) HashMap<(String, String), i32>);
 
 impl Ballots for BattleBallots {
     fn new(choices: &Vec<&str>) -> Self {
@@ -173,6 +174,12 @@ impl MinimalVotingSystemInfo {
             choices,
             ballot_form,
         }
+    }
+
+    /// Shuffle choices
+    pub fn shuffle_choices(mut self) -> MinimalVotingSystemInfo {
+        self.choices.shuffle(&mut rng());
+        self
     }
 
     /// Get all available choices

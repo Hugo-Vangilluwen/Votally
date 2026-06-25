@@ -3,9 +3,10 @@ use tokio::{
     net::TcpStream,
 };
 
-use crate::voting_system::SingleBallot;
-
-use crate::{network::server::VotallyServer, voting_system::MinimalVotingSystemInfo};
+use crate::{
+    network::server::VotallyServer,
+    voting_system::{MinimalVotingSystemInfo, SingleBallot},
+};
 
 pub struct VotallyClient {
     stream: TcpStream,
@@ -38,9 +39,10 @@ impl VotallyClient {
     }
 
     /// Get all the information from server
-    // Normaly return VotingSystemInfo
     pub async fn get_info(&mut self) -> MinimalVotingSystemInfo {
-        ron::de::from_str(&(self.read_stream().await)).unwrap()
+        ron::de::from_str::<MinimalVotingSystemInfo>(&(self.read_stream().await))
+            .unwrap()
+            .shuffle_choices()
     }
 
     /// Send the vote to the server
