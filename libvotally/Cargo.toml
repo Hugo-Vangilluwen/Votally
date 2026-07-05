@@ -7,4 +7,4 @@ edition = "2024"
 rand = "0.10.1"
 ron = "0.12.0"
 serde = { version = "1.0.228", features = ["derive"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["net", "sync", "io-util", "rt", "macros"] }
