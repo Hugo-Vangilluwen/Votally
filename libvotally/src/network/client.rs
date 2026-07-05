@@ -8,6 +8,7 @@ use crate::{
     voting_system::{MinimalVotingSystemInfo, SingleBallot},
 };
 
+#[derive(Debug)]
 pub struct VotallyClient {
     stream: TcpStream,
 }
