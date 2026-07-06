@@ -5,7 +5,7 @@ use std::error::Error;
 use std::fmt;
 
 /// Describe the ballot's form
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BallotForm {
     Uninominal,
     Approved,
@@ -156,7 +156,7 @@ impl Ballots for BattleBallots {
 }
 
 /// Describe minimal information need to an election
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MinimalVotingSystemInfo {
     /// The name of the voting system
     name: String,

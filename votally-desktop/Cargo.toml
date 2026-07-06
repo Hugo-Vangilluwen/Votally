@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 iced = { version = "0.14.0", features = ["tokio"] }
 libvotally = { path = "../libvotally" }
+tokio = { version = "1.52.3", features = ["sync"] }
