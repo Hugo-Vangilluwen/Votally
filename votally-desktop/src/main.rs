@@ -1,5 +1,5 @@
 use iced;
-use iced::widget::{Column, checkbox, container, radio, text, text_input};
+use iced::widget::{Column, button, checkbox, container, radio, text, text_input};
 use iced::{Element, Task};
 use std::iter::{chain, once};
 use std::sync::Arc;
@@ -17,6 +17,8 @@ enum Message {
     ChangeBallotUninominal(usize),
     ChangeBallotApproved(String, bool),
     SubmitBallot,
+    WaitWinner,
+    ShowWinner(String),
 }
 
 #[derive(Default)]
@@ -25,6 +27,8 @@ struct VotallyApp {
     client: Option<Arc<Mutex<VotallyClient>>>,
     info: Option<MinimalVotingSystemInfo>,
     ballot: Option<SingleBallot>,
+    sending_vote: bool,
+    winner: Option<String>,
 }
 
 fn container_centered<'a, W>(widget: W) -> Element<'a, Message>
@@ -127,23 +131,74 @@ impl VotallyApp {
                 ));
                 Task::none()
             }
-            _ => unimplemented!(),
+            Message::SubmitBallot => {
+                let client_clone = self.client.as_ref().map(Arc::clone);
+                let ballot_clone = self.ballot.clone();
+                self.info = None;
+                self.sending_vote = true;
+
+                Task::perform(
+                    async move {
+                        client_clone
+                            .unwrap()
+                            .lock()
+                            .await
+                            .send_vote(&ballot_clone.unwrap())
+                            .await
+                    },
+                    |_| Message::WaitWinner,
+                )
+            }
+            Message::WaitWinner => {
+                let client_clone = self.client.as_ref().map(Arc::clone);
+
+                Task::perform(
+                    async move { client_clone.unwrap().lock().await.result().await },
+                    |winner| Message::ShowWinner(winner),
+                )
+            }
+            Message::ShowWinner(winner) => {
+                self.winner = Some(winner);
+                self.client = None;
+                Task::none()
+            }
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
         match self.client {
-            None => container_centered(
-                text_input("Enter server's IP", &self.server_ip)
-                    .padding(5)
-                    .on_input(Message::ChangeServerIP)
-                    .on_submit(Message::SubmitServerIP),
-            ),
+            None => match &self.winner {
+                None => container_centered(
+                    text_input("Enter server's IP", &self.server_ip)
+                        .padding(5)
+                        .on_input(Message::ChangeServerIP)
+                        .on_submit(Message::SubmitServerIP),
+                ),
+                Some(w) => container_centered(text(format!("Winner: {}", w))),
+            },
             Some(_) => match &self.info {
-                None => container_centered(text("Waiting info")),
+                None => {
+                    if self.sending_vote {
+                        container_centered(text("Sending ballot ..."))
+                    } else {
+                        container_centered(text("Waiting info"))
+                    }
+                }
                 Some(i) => Column::with_children(chain(
-                    once(text(i.get_name()).into()),
-                    view_choices(i.get_choices(), i.get_ballot_form(), &self.ballot).into_iter(),
+                    chain(
+                        once(text(i.get_name()).into()),
+                        view_choices(i.get_choices(), i.get_ballot_form(), &self.ballot)
+                            .into_iter(),
+                    ),
+                    once(
+                        self.ballot
+                            .as_ref()
+                            .map(|b| match i.check_ballot(&b) {
+                                Ok(()) => button("Vote !").on_press(Message::SubmitBallot).into(),
+                                Err(e) => text(format!("{}", e)).into(),
+                            })
+                            .unwrap_or_else(|| text("No ballot Yet").into()),
+                    ),
                 ))
                 .into(),
             },
