@@ -27,7 +27,7 @@ impl fmt::Display for BallotForm {
 }
 
 /// Type for a signle ballot
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum SingleBallot {
     Uninominal(String),
     Approved(Vec<String>),
@@ -36,11 +36,28 @@ pub enum SingleBallot {
 
 impl SingleBallot {
     /// Return the form of this ballot
-    fn ballot_form(&self) -> BallotForm {
+    pub fn ballot_form(&self) -> BallotForm {
         match self {
             SingleBallot::Uninominal(_) => BallotForm::Uninominal,
             SingleBallot::Approved(_) => BallotForm::Approved,
             SingleBallot::Ranked(_) => BallotForm::Ranked,
+        }
+    }
+
+    /// Return approved choices
+    pub fn approved_choices(&self) -> HashSet<String> {
+        match self {
+            SingleBallot::Uninominal(u) => {
+                let mut ac = HashSet::new();
+                ac.insert(u.to_string());
+                ac
+            }
+            SingleBallot::Approved(a) => HashSet::from_iter(a.iter().map(String::to_string)),
+            SingleBallot::Ranked(r) => {
+                let mut ac = HashSet::new();
+                ac.insert(r[0].clone());
+                ac
+            }
         }
     }
 }
@@ -177,9 +194,14 @@ impl MinimalVotingSystemInfo {
     }
 
     /// Shuffle choices
-    pub fn shuffle_choices(mut self) -> MinimalVotingSystemInfo {
+    pub(crate) fn shuffle_choices(mut self) -> MinimalVotingSystemInfo {
         self.choices.shuffle(&mut rng());
         self
+    }
+
+    /// Get name
+    pub fn get_name(&self) -> String {
+        self.name.clone()
     }
 
     /// Get all available choices

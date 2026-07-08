@@ -1,12 +1,12 @@
 use iced;
-use iced::widget::text_input;
+use iced::widget::{Column, checkbox, container, radio, text, text_input};
 use iced::{Element, Task};
+use std::iter::{chain, once};
 use std::sync::Arc;
-
 use tokio::sync::Mutex;
 
 use libvotally::network::VotallyClient;
-use libvotally::voting_system::MinimalVotingSystemInfo;
+use libvotally::voting_system::{BallotForm, MinimalVotingSystemInfo, SingleBallot};
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -14,7 +14,8 @@ enum Message {
     SubmitServerIP,
     SetClient(Arc<VotallyClient>),
     GetInfo(MinimalVotingSystemInfo),
-    ChangeBallot(String),
+    ChangeBallotUninominal(usize),
+    ChangeBallotApproved(String, bool),
     SubmitBallot,
 }
 
@@ -23,6 +24,59 @@ struct VotallyApp {
     server_ip: String,
     client: Option<Arc<Mutex<VotallyClient>>>,
     info: Option<MinimalVotingSystemInfo>,
+    ballot: Option<SingleBallot>,
+}
+
+fn container_centered<'a, W>(widget: W) -> Element<'a, Message>
+where
+    W: Into<Element<'a, Message>>,
+{
+    container(widget)
+        .center(iced::Length::Fill)
+        .padding(10)
+        .into()
+}
+
+fn view_choices<'a>(
+    choices: Vec<String>,
+    ballot_form: BallotForm,
+    ballot: &'a Option<SingleBallot>,
+) -> Vec<Element<'a, Message>> {
+    match ballot_form {
+        BallotForm::Uninominal => choices
+            .into_iter()
+            .enumerate()
+            .map(move |(k, choice)| {
+                let selected_choice = ballot.clone().map(|b| {
+                    k + if b == SingleBallot::Uninominal(choice.clone()) {
+                        0
+                    } else {
+                        1
+                    }
+                });
+
+                radio(choice, k, selected_choice, Message::ChangeBallotUninominal).into()
+            })
+            .collect(),
+        BallotForm::Approved => {
+            let approved_choices = ballot
+                .clone()
+                .map(|b| b.approved_choices())
+                .unwrap_or_default();
+            choices
+                .into_iter()
+                .map(move |choice| {
+                    checkbox(approved_choices.contains(&choice))
+                        .label(choice.clone())
+                        .on_toggle(move |checked| {
+                            Message::ChangeBallotApproved(choice.clone(), checked)
+                        })
+                        .into()
+                })
+                .collect()
+        }
+        _ => unimplemented!(),
+    }
 }
 
 impl VotallyApp {
@@ -52,23 +106,53 @@ impl VotallyApp {
                 self.info = Some(info);
                 Task::none()
             }
+            Message::ChangeBallotUninominal(k) => {
+                self.ballot = Some(SingleBallot::Uninominal(
+                    self.info.as_ref().unwrap().get_choices()[k].clone(),
+                ));
+                Task::none()
+            }
+            Message::ChangeBallotApproved(choice, checked) => {
+                self.ballot = Some(self.ballot.take().map_or(
+                    SingleBallot::Approved(vec![choice.clone()]),
+                    |b| {
+                        let mut approved_choices = b.approved_choices();
+                        if checked {
+                            approved_choices.insert(choice);
+                        } else {
+                            approved_choices.remove(&choice);
+                        }
+                        SingleBallot::Approved(Vec::from_iter(approved_choices))
+                    },
+                ));
+                Task::none()
+            }
             _ => unimplemented!(),
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
         match self.client {
-            None => text_input("Enter server's IP", &self.server_ip)
-                .on_input(Message::ChangeServerIP)
-                .on_submit(Message::SubmitServerIP)
+            None => container_centered(
+                text_input("Enter server's IP", &self.server_ip)
+                    .padding(5)
+                    .on_input(Message::ChangeServerIP)
+                    .on_submit(Message::SubmitServerIP),
+            ),
+            Some(_) => match &self.info {
+                None => container_centered(text("Waiting info")),
+                Some(i) => Column::with_children(chain(
+                    once(text(i.get_name()).into()),
+                    view_choices(i.get_choices(), i.get_ballot_form(), &self.ballot).into_iter(),
+                ))
                 .into(),
-            Some(_) => unimplemented!(),
+            },
         }
     }
 }
 
 fn main() -> iced::Result {
     iced::application(VotallyApp::default, VotallyApp::update, VotallyApp::view)
-        .window_size(iced::Size::new(200., 50.))
+        .window_size(iced::Size::new(250., 200.))
         .run()
 }
