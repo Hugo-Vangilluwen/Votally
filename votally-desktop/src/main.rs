@@ -1,7 +1,6 @@
 use iced;
-use iced::widget::{Column, button, checkbox, container, radio, text, text_input};
-use iced::{Element, Task};
-use std::iter::{chain, once};
+use iced::widget::{Column, button, checkbox, container, radio, scrollable, text, text_input};
+use iced::{Element, Length, Task};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -31,14 +30,11 @@ struct VotallyApp {
     winner: Option<String>,
 }
 
-fn container_centered<'a, W>(widget: W) -> Element<'a, Message>
+fn container_centered<'a, W>(widget: W) -> iced::widget::Container<'a, Message>
 where
     W: Into<Element<'a, Message>>,
 {
-    container(widget)
-        .center(iced::Length::Fill)
-        .padding(10)
-        .into()
+    container(widget).center(Length::Fill).padding(10)
 }
 
 fn view_choices<'a>(
@@ -175,22 +171,28 @@ impl VotallyApp {
                         .on_submit(Message::SubmitServerIP),
                 ),
                 Some(w) => container_centered(text(format!("Winner: {}", w))),
-            },
+            }
+            .into(),
             Some(_) => match &self.info {
-                None => {
-                    if self.sending_vote {
-                        container_centered(text("Sending ballot ..."))
-                    } else {
-                        container_centered(text("Waiting info"))
-                    }
+                None => if self.sending_vote {
+                    container_centered(text("Sending ballot ..."))
+                } else {
+                    container_centered(text("Waiting info"))
                 }
-                Some(i) => Column::with_children(chain(
-                    chain(
-                        once(text(i.get_name()).into()),
-                        view_choices(i.get_choices(), i.get_ballot_form(), &self.ballot)
-                            .into_iter(),
-                    ),
-                    once(
+                .into(),
+                Some(i) => container(
+                    Column::from_vec(vec![
+                        text(i.get_name()).into(),
+                        container(
+                            scrollable(Column::from_vec(view_choices(
+                                i.get_choices(),
+                                i.get_ballot_form(),
+                                &self.ballot,
+                            )))
+                            .spacing(20.),
+                        )
+                        .max_height(100.)
+                        .into(),
                         self.ballot
                             .as_ref()
                             .map(|b| match i.check_ballot(&b) {
@@ -198,8 +200,11 @@ impl VotallyApp {
                                 Err(e) => text(format!("{}", e)).into(),
                             })
                             .unwrap_or_else(|| text("No ballot Yet").into()),
-                    ),
-                ))
+                    ])
+                    .spacing(10.),
+                )
+                .center(Length::Fill)
+                .padding(10.)
                 .into(),
             },
         }
