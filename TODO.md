@@ -1,4 +1,2 @@
-3 parts in Cargo's workspace:
-- lib
-- CLI
-- GUI
+- add implementation of ranking ballot in GUI
+- show voters in server during ballot

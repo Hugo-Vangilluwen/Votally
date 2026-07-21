@@ -44,3 +44,12 @@ votally-desktop
 ```
 
 Enter the server's IP. You will then be presented with the voting system in use and the list of available options. Once voting starts, submit your vote as indicated and wait for voting to end; you will then be shown the winning option.
+
+## Development
+
+There are 3 parts in Cargo's workspace:
+- lib
+- CLI
+- GUI
+
+See [TODO](TODO.md)
